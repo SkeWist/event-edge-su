@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Validator;
 class TournamentController extends Controller
 {
     // Просмотр турнира
+    public function index()
+    {
+        $tournaments = Tournament::all();
+        return response()->json($tournaments);
+    }
     public function show($id)
     {
         $tournament = Tournament::findOrFail($id);
