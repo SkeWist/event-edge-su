@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 class TournamentController extends Controller
 {
     // Просмотр турнира
+    //1
     public function index()
     {
         $tournaments = Tournament::all();
