@@ -24,6 +24,7 @@ class TournamentsTableSeeder extends Seeder
                 'user_id' => 1, // ID пользователя, создавшего турнир
                 'game_id' => 1, // ID игры
                 'stage_id' => 1, // ID этапа
+                'views_count' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -35,6 +36,7 @@ class TournamentsTableSeeder extends Seeder
                 'user_id' => 2,
                 'game_id' => 2,
                 'stage_id' => 2,
+                'views_count' => 2,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -46,6 +48,7 @@ class TournamentsTableSeeder extends Seeder
                 'user_id' => 3,
                 'game_id' => 3,
                 'stage_id' => 3,
+                'views_count' => 12,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

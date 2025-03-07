@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('game_id')->constrained('games');
             $table->foreignId('stage_id')->constrained('stages');
+            $table->unsignedInteger('views_count')->default(0);
             $table->timestamps();
         });
     }

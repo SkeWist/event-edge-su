@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->prefix('guest')->group(function () {
     Route::get('news-feeds/{id}', [NewsFeedController::class, 'show']);
     Route::get('games', [GameController::class, 'index']);
     Route::get('games/{id}', [GameController::class, 'show']);
+    Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
 });
 
 //Пользовательский функционал
@@ -56,6 +57,7 @@ Route::middleware('auth:sanctum')->prefix('user')->group(function () {
     Route::post('team-invites/{inviteId}/decline', [TeamInviteController::class, 'decline'])->middleware('auth');
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
+    Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
 });
 
 //Админский функционал
@@ -70,6 +72,8 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     Route::post('/tournaments/update/{id}', [TournamentController::class, 'update']);
     // Удаление турнира
     Route::delete('/tournaments/delete/{id}', [TournamentController::class, 'destroy']);
+    // Топ 10 популярных турниров
+    Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     // Просмотр команды по ID
     Route::get('/teams/{id}', [TeamController::class, 'show']);
     // Создание новой команды

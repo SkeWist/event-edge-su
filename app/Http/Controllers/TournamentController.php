@@ -27,12 +27,18 @@ class TournamentController extends Controller
     }
     public function show($id)
     {
+        // Находим турнир
         $tournament = Tournament::with('user')->findOrFail($id)
             ->makeHidden(['id', 'user_id', 'game_id', 'stage_id', 'created_at', 'updated_at']);
 
+        // Обновляем количество просмотров
+        $tournament->increment('views_count');
+
+        // Присваиваем имя организатора
         $tournament->user_name = $tournament->user->name ?? 'Неизвестный пользователь';
         unset($tournament->user);
 
+        // Возвращаем турнир с увеличенным счётчиком просмотров
         return response()->json($tournament);
     }
     // Создание турнира
@@ -58,6 +64,21 @@ class TournamentController extends Controller
             'message' => "Турнир '{$tournament->name}' успешно создан!",
             'tournament' => $tournament
         ], 201);
+    }
+    public function popularTournaments()
+    {
+        // Сортировка по количеству просмотров и получение топ-10 популярных турниров
+        $tournaments = Tournament::orderByDesc('views_count')
+            ->take(10)
+            ->get()
+            ->makeHidden(['id', 'user_id', 'game_id', 'stage_id', 'created_at', 'updated_at']);
+
+        $tournaments->each(function ($tournament) {
+            $tournament->user_name = $tournament->user->name ?? 'Неизвестный пользователь';
+            unset($tournament->user);
+        });
+
+        return response()->json($tournaments);
     }
     public function update(Request $request, $id)
     {
