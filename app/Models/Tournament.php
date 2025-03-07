@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
 class Tournament extends Model
 {
     use HasFactory;
@@ -14,58 +13,31 @@ class Tournament extends Model
         'description',
         'start_date',
         'end_date',
-        'team_id',
+        'views_count',
         'user_id',
         'game_id',
         'stage_id',
-        'participants_id',
-    ];
-    protected $hidden = [
-        'id'
     ];
 
-    /**
-     * Связь с командой.
-     */
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
-    }
+    protected $hidden = ['user_id', 'game_id', 'stage_id', 'created_at', 'updated_at'];
 
-    /**
-     * Связь с пользователем-организатором.
-     */
     public function organizer()
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Связь с игрой.
-     */
     public function game()
     {
-        return $this->belongsTo(Game::class);
+        return $this->belongsTo(Game::class, 'game_id');
     }
 
-    /**
-     * Связь с этапом турнира.
-     */
     public function stage()
     {
         return $this->belongsTo(Stage::class);
     }
 
-    /**
-     * Связь с участниками турнира.
-     */
     public function participants()
     {
         return $this->hasMany(Participant::class, 'tournament_id');
     }
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
 }

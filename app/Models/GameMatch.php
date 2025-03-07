@@ -16,9 +16,6 @@ class GameMatch extends Model
         'stage_id',
         'result'
     ];
-    protected $hidden = [
-        'id'
-    ];
     public function game()
     {
         return $this->belongsTo(Game::class);

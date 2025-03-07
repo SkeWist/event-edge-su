@@ -15,7 +15,7 @@ class GameMatchController extends Controller
     public function index()
     {
         $matches = GameMatch::with(['game', 'team1', 'team2', 'winnerTeam', 'stage'])->get()
-            ->makeHidden(['id', 'game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
 
         $matches->each(function ($match) {
             $match->game_name = $match->game->name ?? 'Неизвестная игра';
@@ -32,7 +32,7 @@ class GameMatchController extends Controller
     public function show($id)
     {
         $match = GameMatch::with(['game', 'team1', 'team2', 'winnerTeam', 'stage'])->findOrFail($id)
-            ->makeHidden(['id', 'game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
 
         $match->game_name = $match->game->name ?? 'Неизвестная игра';
         $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';

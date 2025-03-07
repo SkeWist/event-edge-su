@@ -17,12 +17,13 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->dateTime('start_date');
             $table->dateTime('end_date')->nullable();
-            $table->foreignId('user_id')->constrained('users');
-            $table->foreignId('game_id')->constrained('games');
-            $table->foreignId('stage_id')->constrained('stages');
+            $table->unsignedBigInteger('user_id');
+            $table->foreignId('game_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('stage_id')->nullable();
             $table->unsignedInteger('views_count')->default(0);
             $table->timestamps();
         });
+
     }
 
     /**

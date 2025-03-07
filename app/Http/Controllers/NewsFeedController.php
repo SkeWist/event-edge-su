@@ -13,7 +13,7 @@ class NewsFeedController extends Controller
     public function index()
     {
         $newsFeeds = NewsFeed::with('user')->get()
-            ->makeHidden(['id', 'user_id', 'created_at', 'updated_at']);
+            ->makeHidden(['user_id', 'created_at', 'updated_at']);
 
         $newsFeeds->each(function ($news) {
             $news->author_name = $news->user->name ?? 'Неизвестный автор';
@@ -25,7 +25,7 @@ class NewsFeedController extends Controller
     public function show($id)
     {
         $newsFeed = NewsFeed::with('user')->findOrFail($id)
-            ->makeHidden(['id', 'user_id', 'created_at', 'updated_at']);
+            ->makeHidden(['user_id', 'created_at', 'updated_at']);
 
         $newsFeed->author_name = $newsFeed->user->name ?? 'Неизвестный автор';
         unset($newsFeed->user);
