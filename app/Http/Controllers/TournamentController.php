@@ -69,7 +69,7 @@ class TournamentController extends Controller
     {
         // Сортировка по количеству просмотров и получение топ-10 популярных турниров
         $tournaments = Tournament::orderByDesc('views_count')
-            ->take(10)
+            ->take(3)
             ->get()
             ->makeHidden(['id', 'user_id', 'game_id', 'stage_id', 'created_at', 'updated_at']);
 

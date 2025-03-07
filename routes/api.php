@@ -23,19 +23,19 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 
-// Фунционал гостя
-Route::middleware('auth:sanctum')->prefix('guest')->group(function () {
+// Открытые маршруты (без аутентификации)
+Route::prefix('guest')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
-    Route::get('game-matches', [GameMatchController::class, 'index']);
-    Route::get('game-matches/{id}', [GameMatchController::class, 'show']);
-    Route::get('stages', [GameMatchController::class, 'index']);
-    Route::get('stages/{id}', [GameMatchController::class, 'show']);
-    Route::get('news-feeds', [NewsFeedController::class, 'index']);
-    Route::get('news-feeds/{id}', [NewsFeedController::class, 'show']);
-    Route::get('games', [GameController::class, 'index']);
-    Route::get('games/{id}', [GameController::class, 'show']);
+    Route::get('/game-matches', [GameMatchController::class, 'index']);
+    Route::get('/game-matches/{id}', [GameMatchController::class, 'show']);
+    Route::get('/stages', [GameMatchController::class, 'index']);
+    Route::get('/stages/{id}', [GameMatchController::class, 'show']);
+    Route::get('/news-feeds', [NewsFeedController::class, 'index']);
+    Route::get('/news-feeds/{id}', [NewsFeedController::class, 'show']);
+    Route::get('/games', [GameController::class, 'index']);
+    Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
 });
 
