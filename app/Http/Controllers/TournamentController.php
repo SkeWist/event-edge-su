@@ -15,19 +15,29 @@ class TournamentController extends Controller
     //1
     public function index()
     {
-        $tournaments = Tournament::all();
+        $tournaments = Tournament::with('user')->get()
+            ->makeHidden(['id', 'user_id', 'game_id', 'stage_id', 'created_at', 'updated_at']);
+
+        $tournaments->each(function ($tournament) {
+            $tournament->user_name = $tournament->user->name ?? 'Неизвестный пользователь';
+            unset($tournament->user);
+        });
+
         return response()->json($tournaments);
     }
     public function show($id)
     {
-        $tournament = Tournament::findOrFail($id);
+        $tournament = Tournament::with('user')->findOrFail($id)
+            ->makeHidden(['id', 'user_id', 'game_id', 'stage_id', 'created_at', 'updated_at']);
+
+        $tournament->user_name = $tournament->user->name ?? 'Неизвестный пользователь';
+        unset($tournament->user);
+
         return response()->json($tournament);
     }
-
     // Создание турнира
     public function store(Request $request)
     {
-        // Валидация данных
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -42,27 +52,15 @@ class TournamentController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Создание турнира
-        $tournament = Tournament::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'user_id' => $request->user_id,
-            'game_id' => $request->game_id,
-            'stage_id' => $request->stage_id,
-        ]);
+        $tournament = Tournament::create($request->all());
 
         return response()->json([
-            'message' => 'Турнир успешно создан!',
+            'message' => "Турнир '{$tournament->name}' успешно создан!",
             'tournament' => $tournament
         ], 201);
     }
-
-    // Редактирование турнира
     public function update(Request $request, $id)
     {
-        // Валидация данных
         $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -77,37 +75,24 @@ class TournamentController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Находим турнир по ID
         $tournament = Tournament::findOrFail($id);
-
-        // Обновляем данные турнира
         $tournament->update($request->only([
-            'name',
-            'description',
-            'start_date',
-            'end_date',
-            'user_id',
-            'game_id',
-            'stage_id'
+            'name', 'description', 'start_date', 'end_date', 'user_id', 'game_id', 'stage_id'
         ]));
 
         return response()->json([
-            'message' => 'Турнир успешно обновлен!',
+            'message' => "Турнир '{$tournament->name}' успешно обновлен!",
             'tournament' => $tournament
         ]);
     }
-
-    // Удаление турнира
     public function destroy($id)
     {
-        // Находим турнир по ID
         $tournament = Tournament::findOrFail($id);
-
-        // Удаляем турнир
+        $tournamentName = $tournament->name;
         $tournament->delete();
 
         return response()->json([
-            'message' => 'Турнир успешно удален!'
+            'message' => "Турнир '{$tournamentName}' успешно удален!"
         ]);
     }
 }

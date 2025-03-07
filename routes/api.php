@@ -23,8 +23,24 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 
+// Фунционал гостя
+Route::middleware('auth:sanctum')->prefix('guest')->group(function () {
+    Route::get('/tournaments', [TournamentController::class, 'index']);
+    Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
+    Route::get('/teams', [TeamController::class, 'index']);
+    Route::get('game-matches', [GameMatchController::class, 'index']);
+    Route::get('game-matches/{id}', [GameMatchController::class, 'show']);
+    Route::get('stages', [GameMatchController::class, 'index']);
+    Route::get('stages/{id}', [GameMatchController::class, 'show']);
+    Route::get('news-feeds', [NewsFeedController::class, 'index']);
+    Route::get('news-feeds/{id}', [NewsFeedController::class, 'show']);
+    Route::get('games', [GameController::class, 'index']);
+    Route::get('games/{id}', [GameController::class, 'show']);
+});
+
 //Пользовательский функционал
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->prefix('user')->group(function () {
+    Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
     Route::get('game-matches', [GameMatchController::class, 'index']);
@@ -43,7 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 //Админский функционал
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+    // Просмотр списка турниров
+    Route::get('/tournaments', [TournamentController::class, 'index']);
     // Просмотр турнира
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     // Создание турнира

@@ -13,16 +13,27 @@ class StageController extends Controller
     public function index()
     {
         $stages = Stage::with('stageType')->get();  // Загрузка этапов с типами
+
+        // Преобразуем каждый этап, чтобы заменить id на имя типа
+        $stages = $stages->map(function ($stage) {
+            $stage->stage_type_name = $stage->stageType->name;  // Добавляем имя типа стадии
+            unset($stage->stageType);  // Убираем связанный объект stageType
+            return $stage;
+        });
+
         return response()->json($stages);
     }
-
     // Просмотр одного этапа по ID
     public function show($id)
     {
         $stage = Stage::with('stageType')->findOrFail($id);  // Загрузка этапа с типом
+
+        // Заменяем id на имя типа стадии
+        $stage->stage_type_name = $stage->stageType->name;
+        unset($stage->stageType);  // Убираем связанный объект stageType
+
         return response()->json($stage);
     }
-
     // Создание нового этапа
     public function store(Request $request)
     {

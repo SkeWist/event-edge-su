@@ -20,6 +20,9 @@ class Tournament extends Model
         'stage_id',
         'participants_id',
     ];
+    protected $hidden = [
+        'id'
+    ];
 
     /**
      * Связь с командой.
@@ -60,4 +63,9 @@ class Tournament extends Model
     {
         return $this->hasMany(Participant::class, 'tournament_id');
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
 }

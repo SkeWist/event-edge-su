@@ -16,53 +16,40 @@ class GameMatch extends Model
         'stage_id',
         'result'
     ];
-
-    // Указание, что поля с датой нужно автоматически преобразовывать
-    protected $dates = ['match_date'];
-
-    /**
-     * Связь с игрой.
-     */
+    protected $hidden = [
+        'id'
+    ];
     public function game()
     {
         return $this->belongsTo(Game::class);
     }
 
-    /**
-     * Связь с первой командой.
-     */
     public function team1()
     {
         return $this->belongsTo(Team::class, 'team_1_id');
     }
 
-    /**
-     * Связь со второй командой.
-     */
     public function team2()
     {
         return $this->belongsTo(Team::class, 'team_2_id');
     }
 
-    /**
-     * Связь с победившей командой.
-     */
-    public function winner()
+    public function winnerTeam()
     {
         return $this->belongsTo(Team::class, 'winner_team_id');
     }
 
-    /**
-     * Связь с этапом турнира.
-     */
     public function stage()
     {
         return $this->belongsTo(Stage::class);
     }
+    // Указание, что поля с датой нужно автоматически преобразовывать
+    protected $dates = ['match_date'];
 
-    /**
-     * Связь с участниками матча (можно использовать через таблицу match_participant).
-     */
+    public function winner()
+    {
+        return $this->belongsTo(Team::class, 'winner_team_id');
+    }
     public function participants()
     {
         return $this->belongsToMany(Participant::class, 'match_participant', 'game_match_id', 'participant_id');

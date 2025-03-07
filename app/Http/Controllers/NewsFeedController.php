@@ -12,22 +12,26 @@ class NewsFeedController extends Controller
      */
     public function index()
     {
-        $newsFeeds = NewsFeed::all(); // Получаем все новости
+        $newsFeeds = NewsFeed::with('user')->get()
+            ->makeHidden(['id', 'user_id', 'created_at', 'updated_at']);
+
+        $newsFeeds->each(function ($news) {
+            $news->author_name = $news->user->name ?? 'Неизвестный автор';
+            unset($news->user);
+        });
+
         return response()->json($newsFeeds);
     }
-
-    /**
-     * Просмотр одной новости.
-     */
     public function show($id)
     {
-        $newsFeed = NewsFeed::findOrFail($id); // Находим новость по ID
+        $newsFeed = NewsFeed::with('user')->findOrFail($id)
+            ->makeHidden(['id', 'user_id', 'created_at', 'updated_at']);
+
+        $newsFeed->author_name = $newsFeed->user->name ?? 'Неизвестный автор';
+        unset($newsFeed->user);
+
         return response()->json($newsFeed);
     }
-
-    /**
-     * Создание новости.
-     */
     public function store(Request $request)
     {
         // Валидация входных данных
@@ -53,10 +57,6 @@ class NewsFeedController extends Controller
             'news_feed' => $newsFeed,
         ], 201); // Ответ с созданным объектом
     }
-
-    /**
-     * Редактирование новости.
-     */
     public function update(Request $request, $id)
     {
         // Валидация входных данных
@@ -85,10 +85,6 @@ class NewsFeedController extends Controller
             'news_feed' => $newsFeed,
         ]);
     }
-
-    /**
-     * Удаление новости.
-     */
     public function destroy($id)
     {
         // Поиск новости по ID
