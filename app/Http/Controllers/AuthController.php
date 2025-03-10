@@ -9,6 +9,7 @@ use App\Http\Requests\AuthRequest;
 use App\Http\Requests\LoginRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -43,6 +44,7 @@ class AuthController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'role' => $user->role->name,
                 'access_token' => $token,
             ]
         ], 201); // HTTP статус 201 — создано
@@ -68,11 +70,15 @@ class AuthController extends Controller
             // Генерируем токен
             $token = $user->createToken('auth_token')->plainTextToken;
 
+            // Убираем префикс '3|'
+            $token = Str::after($token, '|'); // Убираем все, что до символа |
+
             return response()->json([
                 'message' => 'Вы успешно авторизовались!',
                 'user' => [
                     'name' => $user->name,
                     'email' => $user->email,
+                    'role' => $user->role->name, // предполагаем, что роль связана с моделью
                     'access_token' => $token,
                 ]
             ], 200);
