@@ -30,12 +30,9 @@ class Team extends Model
     {
         return $this->belongsToMany(User::class, 'participants');
     }
-
-    /**
-     * Связь с турнирами (Many-to-Many).
-     */
     public function tournaments()
     {
-        return $this->belongsToMany(Tournament::class, 'participants');
+        return $this->belongsToMany(Tournament::class, 'tournament_teams');
     }
+
 }

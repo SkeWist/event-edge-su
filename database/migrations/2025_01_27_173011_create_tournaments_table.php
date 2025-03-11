@@ -17,13 +17,19 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->dateTime('start_date');
             $table->dateTime('end_date')->nullable();
-            $table->unsignedBigInteger('user_id');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('game_id')->constrained()->onDelete('cascade');
-            $table->unsignedBigInteger('stage_id')->nullable();
+            $table->foreignId('stage_id')->nullable()->constrained()->onDelete('set null');
             $table->unsignedInteger('views_count')->default(0);
             $table->timestamps();
         });
 
+        Schema::create('tournament_teams', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            $table->timestamps();
+        });
     }
 
     /**
@@ -31,6 +37,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('tournament_teams');
         Schema::dropIfExists('tournaments');
     }
 };

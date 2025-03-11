@@ -14,16 +14,15 @@ class TournamentsTableSeeder extends Seeder
      */
     public function run()
     {
-        // Данные для заполнения
         $tournaments = [
             [
                 'name' => 'Summer Tournament 2023',
                 'description' => 'Annual summer gaming tournament.',
-                'start_date' => Carbon::now()->addDays(5), // Начинается через 5 дней
-                'end_date' => Carbon::now()->addDays(10), // Заканчивается через 10 дней
-                'user_id' => 1, // ID пользователя, создавшего турнир
-                'game_id' => 1, // ID игры
-                'stage_id' => 1, // ID этапа
+                'start_date' => Carbon::now()->addDays(5),
+                'end_date' => Carbon::now()->addDays(10),
+                'user_id' => 1,
+                'game_id' => 1,
+                'stage_id' => 1,
                 'views_count' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -54,7 +53,22 @@ class TournamentsTableSeeder extends Seeder
             ],
         ];
 
-        // Вставка данных в таблицу
         DB::table('tournaments')->insert($tournaments);
+
+        // Привязываем случайные команды к турнирам
+        $teams = DB::table('teams')->pluck('id')->toArray();
+        $tournamentIds = DB::table('tournaments')->pluck('id')->toArray();
+
+        foreach ($tournamentIds as $tournamentId) {
+            $randomTeams = array_rand($teams, min(3, count($teams)));
+            foreach ((array) $randomTeams as $teamIndex) {
+                DB::table('tournament_teams')->insert([
+                    'tournament_id' => $tournamentId,
+                    'team_id' => $teams[$teamIndex],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
     }
 }
