@@ -67,14 +67,18 @@ class TournamentController extends Controller
     public function show($id)
     {
         $tournament = Tournament::with([
-            'organizer:id,name', // Выбираем только id и name для организатора
-            'game:id,name', // Выбираем только id и name для игры
-            'stage:id,name', // Выбираем только id и name для стадии
-            'teams:name' // Выбираем только id и name для команд
+            'organizer:id,name',
+            'game:id,name',
+            'stage:id,name',
+            'teams:name'
         ])->findOrFail($id);
+
+        // Увеличиваем количество просмотров
+        $tournament->increment('views_count');
 
         return response()->json($tournament);
     }
+
     public function addTeam(Request $request, $tournamentId)
     {
         $validator = Validator::make($request->all(), [

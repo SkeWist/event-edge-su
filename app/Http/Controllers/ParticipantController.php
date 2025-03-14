@@ -67,37 +67,35 @@ class ParticipantController extends Controller
         // Находим пользователя
         $user = User::findOrFail($userId);
 
-        // Получаем участие пользователя в турнире (через таблицу participants)
+        // Получаем участие пользователя в турнире
         $participant = Participant::where('user_id', $userId)->first();
 
-        // Проверяем, если у пользователя нет участия (нет команды), то возвращаем ошибку
         if (!$participant || !$participant->team) {
             return response()->json([
                 'error' => 'У пользователя нет команды.',
             ], 404);
         }
 
-        // Получаем команду пользователя через участника
+        // Получаем команду пользователя
         $team = $participant->team;
 
         // Получаем турниры, в которых участвовала команда
         $tournaments = Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);  // Указываем, что id относится к таблице teams
+            $query->where('teams.id', $team->id);
         })->get();
 
         // Получаем текущий турнир, в котором участвует команда
         $currentTournament = Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);  // Указываем, что id относится к таблице teams
-        })->whereNull('end_date') // Если турнир не имеет даты окончания
-        ->first();
+            $query->where('teams.id', $team->id);
+        })->whereNull('end_date')->first();
 
-        // Формируем ответ с информацией
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'team' => $team ? $team->name : null,  // Имя команды, если есть
+                'team' => $team ? $team->name : null,
+                'token' => $user->api_token, // Добавляем токен пользователя
             ],
             'tournaments' => $tournaments->map(function ($tournament) {
                 return [
@@ -112,7 +110,7 @@ class ParticipantController extends Controller
                 'name' => $currentTournament->name,
                 'start_date' => $currentTournament->start_date,
                 'end_date' => $currentTournament->end_date,
-            ] : null,  // Если есть текущий турнир
+            ] : null,
         ]);
     }
     // Удаление участника турнира
