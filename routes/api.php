@@ -38,7 +38,7 @@ Route::prefix('guest')->group(function () {
     Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::get('/participants/profile/{userId}', [ParticipantController::class, 'profile']);
-    Route::get('/participants/my-profile/{token}', [ParticipantController::class, 'myProfile']);
+    Route::get('/participants/my-profile', [ParticipantController::class, 'myProfile']);
 });
 
 //Пользовательский функционал

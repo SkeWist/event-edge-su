@@ -113,9 +113,24 @@ class ParticipantController extends Controller
             ] : null,
         ]);
     }
-    public function myProfile($token)
+    public function myProfile(Request $request)
     {
-        // Находим пользователя по переданному токену
+        // Принудительно загружаем JSON-данные в запрос
+        $request->merge(json_decode($request->getContent(), true) ?? []);
+
+        // Получаем токен из тела запроса
+        $token = $request->input('token');
+
+        if (!$token) {
+            return response()->json(['error' => 'Токен обязателен.'], 400);
+        }
+
+        // Убираем возможный префикс "Bearer "
+        if (str_starts_with($token, 'Bearer ')) {
+            $token = substr($token, 7);
+        }
+
+        // Находим пользователя по токену
         $user = User::where('api_token', $token)->first();
 
         if (!$user) {
@@ -126,9 +141,7 @@ class ParticipantController extends Controller
         $participant = Participant::where('user_id', $user->id)->first();
 
         if (!$participant || !$participant->team) {
-            return response()->json([
-                'error' => 'У пользователя нет команды.',
-            ], 404);
+            return response()->json(['error' => 'У пользователя нет команды.'], 404);
         }
 
         // Получаем команду пользователя

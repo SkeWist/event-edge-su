@@ -41,7 +41,6 @@ class NotificationController extends Controller
             'notification' => $notification,
         ], 201);
     }
-
     /**
      * Просмотр уведомления по ID.
      */
@@ -52,7 +51,6 @@ class NotificationController extends Controller
 
         return response()->json($notification);
     }
-
     /**
      * Обновление уведомления.
      */
@@ -76,7 +74,6 @@ class NotificationController extends Controller
             'notification' => $notification,
         ]);
     }
-
     /**
      * Удаление уведомления.
      */
