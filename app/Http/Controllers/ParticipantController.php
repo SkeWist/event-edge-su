@@ -113,6 +113,62 @@ class ParticipantController extends Controller
             ] : null,
         ]);
     }
+    public function myProfile($token)
+    {
+        // Находим пользователя по переданному токену
+        $user = User::where('api_token', $token)->first();
+
+        if (!$user) {
+            return response()->json(['error' => 'Пользователь не найден или токен недействителен.'], 401);
+        }
+
+        // Получаем участие пользователя в турнире
+        $participant = Participant::where('user_id', $user->id)->first();
+
+        if (!$participant || !$participant->team) {
+            return response()->json([
+                'error' => 'У пользователя нет команды.',
+            ], 404);
+        }
+
+        // Получаем команду пользователя
+        $team = $participant->team;
+
+        // Получаем турниры, в которых участвовала команда
+        $tournaments = Tournament::whereHas('teams', function ($query) use ($team) {
+            $query->where('teams.id', $team->id);
+        })->get();
+
+        // Получаем текущий турнир, в котором участвует команда
+        $currentTournament = Tournament::whereHas('teams', function ($query) use ($team) {
+            $query->where('teams.id', $team->id);
+        })->whereNull('end_date')->first();
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'team' => $team->name,
+                'token' => $user->api_token, // Возвращаем токен пользователя
+            ],
+            'tournaments' => $tournaments->map(function ($tournament) {
+                return [
+                    'id' => $tournament->id,
+                    'name' => $tournament->name,
+                    'start_date' => $tournament->start_date,
+                    'end_date' => $tournament->end_date,
+                ];
+            }),
+            'current_tournament' => $currentTournament ? [
+                'id' => $currentTournament->id,
+                'name' => $currentTournament->name,
+                'start_date' => $currentTournament->start_date,
+                'end_date' => $currentTournament->end_date,
+            ] : null,
+        ]);
+    }
+
     // Удаление участника турнира
     public function destroy($id)
     {

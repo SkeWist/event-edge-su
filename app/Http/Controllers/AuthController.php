@@ -15,30 +15,27 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        // Валидация входных данных
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed', // password_confirmation должен быть передан
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // Если валидация не прошла, возвращаем ошибки
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Создание нового пользователя с ролью по умолчанию
+        // Генерируем токен один раз
+        $token = Str::random(60);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => 4, // Роль по умолчанию
+            'role_id' => 4,
+            'api_token' => $token, // Сохраняем токен
         ]);
 
-        // Генерация токена для аутентификации (если необходимо, используйте Sanction)
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        // Ответ с токеном
         return response()->json([
             'message' => 'Вы успешно зарегистрировались!',
             'user' => [
@@ -47,12 +44,10 @@ class AuthController extends Controller
                 'role' => $user->role->name,
                 'access_token' => $token,
             ]
-        ], 201); // HTTP статус 201 — создано
+        ], 201);
     }
-
     public function login(Request $request)
     {
-        // Валидация входных данных
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
@@ -62,36 +57,43 @@ class AuthController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Пытаемся аутентифицировать пользователя
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
-            // Получаем пользователя по email
-            $user = User::where('email', $request->email)->first();
-
-            // Генерируем токен
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            // Убираем префикс '3|'
-            $token = Str::after($token, '|'); // Убираем все, что до символа |
-
-            return response()->json([
-                'message' => 'Вы успешно авторизовались!',
-                'user' => [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role->name, // предполагаем, что роль связана с моделью
-                    'access_token' => $token,
-                ]
-            ], 200);
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json(['error' => 'Неверные учетные данные'], 401);
         }
 
-        return response()->json(['error' => 'Unauthorized'], 401);
+        $user = Auth::user();
+
+        // Удаляем старые токены перед созданием нового (если используем Sanctum)
+        $user->tokens()->delete();
+
+        // Создаем новый токен
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        // Убираем префикс `2|`
+        $cleanToken = explode('|', $token)[1] ?? $token;
+
+        // Сохраняем токен в базу данных
+        $user->api_token = $cleanToken;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Успешный вход в систему!',
+            'access_token' => $cleanToken,
+            'token_type' => 'Bearer',
+            'user' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role->name ?? 'Пользователь',
+            ]
+        ]);
     }
     public function logout(Request $request)
     {
-        // Отзываем токен текущего пользователя
-        $request->user()->tokens->each(function ($token) {
-            $token->delete();
-        });
+        $user = $request->user();
+        if ($user) {
+            $user->api_token = null; // Очищаем токен
+            $user->save();
+        }
 
         return response()->json(['message' => 'Вы успешно вышли из аккаунта!']);
     }

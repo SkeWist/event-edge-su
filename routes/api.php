@@ -20,7 +20,7 @@ Route::get('/user', function (Request $request) {
 
 // Авторизация
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 
 // Открытые маршруты (без аутентификации)
@@ -38,10 +38,11 @@ Route::prefix('guest')->group(function () {
     Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::get('/participants/profile/{userId}', [ParticipantController::class, 'profile']);
+    Route::get('/participants/my-profile/{token}', [ParticipantController::class, 'myProfile']);
 });
 
 //Пользовательский функционал
-Route::middleware('auth:sanctum')->prefix('user')->group(function () {
+Route::middleware(['auth:api', \App\Http\Middleware\RoleMiddleware::class . ':4'])->prefix('user')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
@@ -62,7 +63,7 @@ Route::middleware('auth:sanctum')->prefix('user')->group(function () {
 });
 
 //Админский функционал
-Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+Route::middleware(['auth:api', \App\Http\Middleware\RoleMiddleware::class . ':1'])->prefix('admin')->group(function () {
     // Просмотр списка турниров
     Route::get('/tournaments', [TournamentController::class, 'index']);
     // Просмотр турнира
