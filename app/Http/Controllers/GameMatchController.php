@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GameMatch;
+use App\Models\TournamentBasket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -14,36 +15,42 @@ class GameMatchController extends Controller
      */
     public function index()
     {
-        $matches = GameMatch::with(['game', 'team1', 'team2', 'winnerTeam', 'stage'])->get()
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
+        $matches = GameMatch::with(['game', 'team1', 'team2', 'stage'])->get()
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
         $matches->each(function ($match) {
             $match->game_name = $match->game->name ?? 'Неизвестная игра';
             $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';
             $match->team_2_name = $match->team2->name ?? 'Неизвестная команда';
-            $match->winner_team_name = $match->winnerTeam->name ?? 'Победитель не определён';
             $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-            unset($match->game, $match->team1, $match->team2, $match->winnerTeam, $match->stage);
+            unset($match->game, $match->team1, $match->team2, $match->stage);
         });
 
         return response()->json($matches);
     }
+
+    /**
+     * Просмотр матча по id.
+     */
     public function show($id)
     {
-        $match = GameMatch::with(['game', 'team1', 'team2', 'winnerTeam', 'stage'])->findOrFail($id)
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'winner_team_id', 'stage_id', 'created_at', 'updated_at']);
+        $match = GameMatch::with(['game', 'team1', 'team2', 'stage'])->findOrFail($id)
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
         $match->game_name = $match->game->name ?? 'Неизвестная игра';
         $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';
         $match->team_2_name = $match->team2->name ?? 'Неизвестная команда';
-        $match->winner_team_name = $match->winnerTeam->name ?? 'Победитель не определён';
         $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-        unset($match->game, $match->team1, $match->team2, $match->winnerTeam, $match->stage);
+        unset($match->game, $match->team1, $match->team2, $match->stage);
 
         return response()->json($match);
     }
+
+    /**
+     * Создание нового матча.
+     */
     public function store(Request $request)
     {
         // Валидация данных
@@ -52,10 +59,7 @@ class GameMatchController extends Controller
             'team_1_id' => 'required|exists:teams,id',
             'team_2_id' => 'required|exists:teams,id',
             'match_date' => 'required|date_format:d.m.Y',
-            'status' => 'required|in:scheduled,in_progress,completed',
-            'winner_team_id' => 'nullable|exists:teams,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'result' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -70,10 +74,7 @@ class GameMatchController extends Controller
             'team_1_id' => $request->team_1_id,
             'team_2_id' => $request->team_2_id,
             'match_date' => $match_date,
-            'status' => $request->status,
-            'winner_team_id' => $request->winner_team_id,
             'stage_id' => $request->stage_id,
-            'result' => $request->result,
         ]);
 
         return response()->json([
@@ -93,10 +94,7 @@ class GameMatchController extends Controller
             'team_1_id' => 'nullable|exists:teams,id',
             'team_2_id' => 'nullable|exists:teams,id',
             'match_date' => 'nullable|date_format:d.m.Y',
-            'status' => 'nullable|in:scheduled,in_progress,completed',
-            'winner_team_id' => 'nullable|exists:teams,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'result' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -106,8 +104,7 @@ class GameMatchController extends Controller
         $match = GameMatch::findOrFail($id);
 
         $updateData = $request->only([
-            'game_id', 'team_1_id', 'team_2_id', 'match_date', 'status',
-            'winner_team_id', 'stage_id', 'result'
+            'game_id', 'team_1_id', 'team_2_id', 'match_date', 'stage_id'
         ]);
 
         if ($request->has('match_date')) {

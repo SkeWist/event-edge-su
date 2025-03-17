@@ -61,4 +61,14 @@ class Tournament extends Model
     {
         return $this->belongsToMany(Team::class, 'tournament_teams', 'tournament_id', 'team_id');
     }
+    public function gameMatches()
+    {
+        return $this->belongsToMany(GameMatch::class, 'tournaments_basket')
+            ->withPivot('result', 'winner_team_id') // Связываем с полями промежуточной таблицы
+            ->withTimestamps();    // Включаем автоматическое добавление временных меток
+    }
+    public function baskets()
+    {
+        return $this->hasMany(TournamentBasket::class);
+    }
 }

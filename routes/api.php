@@ -184,4 +184,10 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::put('notifications/{id}', [NotificationController::class, 'update'])->middleware('auth');
     // Удаление уведомления
     Route::delete('notifications/{id}', [NotificationController::class, 'destroy'])->middleware('auth');
+    // Роут для добавления матча в турнир
+    Route::post('/tournaments/add-match', [TournamentController::class, 'addMatchToTournament']);
+    // Роут для обновления результата матча
+    Route::post('/tournaments/{tournamentId}/matches/{matchId}/update-result', [TournamentController::class, 'updateMatchResult']);
+    // Роут для получения турнирной сетки
+    Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
 });

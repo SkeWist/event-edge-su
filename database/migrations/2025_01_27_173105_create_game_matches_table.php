@@ -17,10 +17,7 @@ return new class extends Migration
             $table->foreignId('team_1_id')->constrained('teams')->onDelete('cascade'); // Первая команда
             $table->foreignId('team_2_id')->constrained('teams')->onDelete('cascade'); // Вторая команда
             $table->timestamp('match_date'); // Дата и время матча
-            $table->enum('status', ['scheduled', 'in_progress', 'completed'])->default('scheduled'); // Статус матча
-            $table->foreignId('winner_team_id')->nullable()->constrained('teams')->onDelete('set null');
-            $table->foreignId('stage_id')->nullable()->constrained('stages');
-            $table->string('result');
+            $table->foreignId('stage_id')->nullable()->constrained('stages'); // Этап турнира
             $table->timestamps();
         });
     }

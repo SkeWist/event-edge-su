@@ -125,29 +125,25 @@ class ParticipantController extends Controller
         // Получаем участие пользователя в турнире
         $participant = Participant::where('user_id', $user->id)->first();
 
-        if (!$participant || !$participant->team) {
-            return response()->json(['error' => 'У пользователя нет команды.'], 404);
-        }
+        // Если у пользователя нет команды, ставим значение null для команды
+        $team = $participant ? $participant->team : null;
 
-        // Получаем команду пользователя
-        $team = $participant->team;
-
-        // Получаем турниры, в которых участвовала команда
-        $tournaments = Tournament::whereHas('teams', function ($query) use ($team) {
+        // Получаем турниры, в которых участвовала команда, если она есть
+        $tournaments = $team ? Tournament::whereHas('teams', function ($query) use ($team) {
             $query->where('teams.id', $team->id);
-        })->get();
+        })->get() : collect(); // Если нет команды, возвращаем пустую коллекцию
 
-        // Получаем текущий турнир, в котором участвует команда
-        $currentTournament = Tournament::whereHas('teams', function ($query) use ($team) {
+        // Получаем текущий турнир, в котором участвует команда, если она есть
+        $currentTournament = $team ? Tournament::whereHas('teams', function ($query) use ($team) {
             $query->where('teams.id', $team->id);
-        })->whereNull('end_date')->first();
+        })->whereNull('end_date')->first() : null;
 
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'team' => $team->name,
+                'team' => $team ? $team->name : 'Команда не присоединена', // Если нет команды, показываем это
                 'token' => $user->api_token, // Возвращаем токен пользователя
             ],
             'tournaments' => $tournaments->map(function ($tournament) {

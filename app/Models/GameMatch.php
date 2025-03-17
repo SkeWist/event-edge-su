@@ -11,10 +11,7 @@ class GameMatch extends Model
         'team_1_id',
         'team_2_id',
         'match_date',
-        'status',
-        'winner_team_id',
         'stage_id',
-        'result'
     ];
     public function game()
     {
@@ -58,5 +55,15 @@ class GameMatch extends Model
     public function scopeActive($query)
     {
         return $query->where('match_date', '>=', now());
+    }
+    public function tournaments()
+    {
+        return $this->belongsToMany(Tournament::class, 'tournaments_basket')
+            ->withPivot('result') // Указываем, что есть дополнительное поле "result"
+            ->withTimestamps();   // Включаем автоматическое добавление временных меток
+    }
+    public function tournamentBaskets()
+    {
+        return $this->hasMany(TournamentBasket::class);
     }
 }
