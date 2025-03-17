@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignId('game_id')->constrained()->onDelete('cascade');
             $table->foreignId('stage_id')->nullable()->constrained()->onDelete('set null');
             $table->unsignedInteger('views_count')->default(0);
+            $table->enum('status', ['pending', 'ongoing', 'completed'])->default('pending'); // Добавили статус
             $table->timestamps();
         });
 
@@ -31,7 +32,6 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */

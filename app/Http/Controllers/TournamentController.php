@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Game;
 use App\Models\Stage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class TournamentController extends Controller
@@ -16,39 +17,73 @@ class TournamentController extends Controller
     public function index()
     {
         $tournaments = Tournament::with([
-            'organizer:id,name', // Выбираем только id и name для организатора
-            'game:id,name', // Выбираем только id и name для игры
-            'stage:id,name', // Выбираем только id и name для стадии
-            'teams:name' // Выбираем только id и name для команд
-        ])->get();
+            'organizer:id,name',
+            'game:id,name',
+            'stage:id,name',
+            'teams:id,name' // Добавляем id команд, чтобы избежать ошибки
+        ])->get()->map(function ($tournament) {
+            return [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'description' => $tournament->description,
+                'start_date' => $tournament->start_date,
+                'end_date' => $tournament->end_date,
+                'views_count' => $tournament->views_count,
+                'status_name' => $this->getStatusName($tournament->status), // Название статуса
+                'organizer' => $tournament->organizer,
+                'game' => $tournament->game,
+                'stage' => $tournament->stage,
+                'teams' => $tournament->teams
+            ];
+        });
 
         return response()->json($tournaments);
+    }
+
+    /**
+     * Метод для получения читаемого названия статуса
+     */
+    private function getStatusName($status)
+    {
+        return match ($status) {
+            'pending' => 'Ожидается',
+            'ongoing' => 'В процессе',
+            'completed' => 'Завершен',
+            default => 'Неизвестный статус',
+        };
     }
     // Создание нового турнира
     public function store(Request $request)
     {
+        // Валидация данных
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
-            'user_id' => 'required|exists:users,id',
             'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
+            'status' => 'required|in:pending,ongoing,completed', // Проверка статуса
             'teams' => 'nullable|array',
             'teams.*' => 'exists:teams,id', // Проверка каждого идентификатора команды
         ]);
 
+        // Если валидация не прошла
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Создаем турнир без 'teams', так как они будут прикреплены позже
-        $tournament = Tournament::create(array_merge($request->except('teams'), ['views_count' => 0]));
+        // Определяем пользователя по токену
+        $userId = Auth::id(); // Получаем ID текущего аутентифицированного пользователя
 
-        // Если передан массив команд, прикрепляем их к турниру
+        // Создаем турнир
+        $tournament = Tournament::create(array_merge(
+            $request->except('teams'), // Убираем teams из входящих данных
+            ['views_count' => 0, 'user_id' => $userId] // Добавляем user_id
+        ));
+
+        // Если переданы команды, прикрепляем их
         if ($request->has('teams') && is_array($request->teams)) {
-            // Получаем только существующие команды
             $validTeams = Team::whereIn('id', $request->teams)->pluck('id')->toArray();
 
             if (count($validTeams) !== count($request->teams)) {
@@ -58,8 +93,17 @@ class TournamentController extends Controller
             $tournament->teams()->attach($validTeams);
         }
 
-        // Загружаем все связанные данные (например, команды)
-        $tournament->load('teams');  // Если турнир имеет связь с командами
+        // Загружаем связанные данные
+        $tournament->load('teams');
+
+        // Добавляем статусное название
+        $statusNames = [
+            'pending' => 'Ожидание',
+            'ongoing' => 'В процессе',
+            'completed' => 'Завершен',
+        ];
+
+        $tournament->status_name = $statusNames[$tournament->status] ?? 'Неизвестно';
 
         return response()->json($tournament, 201);
     }
@@ -160,7 +204,8 @@ class TournamentController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'user_id' => 'nullable|exists:users,id',
             'game_id' => 'nullable|exists:games,id',
-            'stage_id' => 'nullable|exists:stages,id'
+            'stage_id' => 'nullable|exists:stages,id',
+            'status' => 'nullable|string|in:upcoming,ongoing,completed' // Добавляем валидацию для статуса
         ]);
 
         if ($validator->fails()) {
@@ -170,7 +215,32 @@ class TournamentController extends Controller
         $tournament = Tournament::findOrFail($id);
         $tournament->update($request->except('teams'));
 
-        return response()->json($tournament);
+        // Добавляем статус в ответе
+        return response()->json([
+            'id' => $tournament->id,
+            'name' => $tournament->name,
+            'description' => $tournament->description,
+            'start_date' => $tournament->start_date,
+            'end_date' => $tournament->end_date,
+            'views_count' => $tournament->views_count,
+            'status_name' => $this->getStatusName($tournament->status),
+            'organizer' => $tournament->organizer ? [
+                'id' => $tournament->organizer->id,
+                'name' => $tournament->organizer->name,
+            ] : null,
+            'game' => $tournament->game ? [
+                'id' => $tournament->game->id,
+                'name' => $tournament->game->name,
+            ] : null,
+            'stage' => $tournament->stage ? [
+                'id' => $tournament->stage->id,
+                'name' => $tournament->stage->name,
+            ] : null,
+            'teams' => $tournament->teams->map(fn($team) => [
+                'id' => $team->id,
+                'name' => $team->name,
+            ]),
+        ]);
     }
     // Удаление турнира
     public function destroy($id)

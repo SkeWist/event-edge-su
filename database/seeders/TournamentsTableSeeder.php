@@ -9,9 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class TournamentsTableSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run()
     {
         $tournaments = [
@@ -24,30 +21,33 @@ class TournamentsTableSeeder extends Seeder
                 'game_id' => 1,
                 'stage_id' => 1,
                 'views_count' => 0,
+                'status' => 'pending', // Добавлен статус
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'name' => 'Winter Championship 2023',
                 'description' => 'Competitive winter gaming championship.',
-                'start_date' => Carbon::now()->addDays(15),
-                'end_date' => Carbon::now()->addDays(20),
+                'start_date' => Carbon::now()->subDays(5),
+                'end_date' => Carbon::now()->addDays(3),
                 'user_id' => 2,
                 'game_id' => 2,
                 'stage_id' => 2,
                 'views_count' => 2,
+                'status' => 'ongoing', // Турнир уже идет
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'name' => 'Spring Showdown 2023',
                 'description' => 'Exciting spring gaming event.',
-                'start_date' => Carbon::now()->addDays(25),
-                'end_date' => Carbon::now()->addDays(30),
+                'start_date' => Carbon::now()->subDays(30),
+                'end_date' => Carbon::now()->subDays(10),
                 'user_id' => 3,
                 'game_id' => 3,
                 'stage_id' => 3,
                 'views_count' => 12,
+                'status' => 'completed', // Турнир уже завершен
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

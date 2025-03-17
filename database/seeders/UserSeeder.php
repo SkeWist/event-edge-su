@@ -30,14 +30,14 @@ class UserSeeder extends Seeder
             [
                 'name' => 'User 3',
                 'email' => 'user3@example.com',
-                'role_id' => 1,
+                'role_id' => 3,
                 'password' => Hash::make('password123'),
                 'api_token' => Str::random(60),
             ],
             [
                 'name' => 'User 4',
                 'email' => 'user4@example.com',
-                'role_id' => 1,
+                'role_id' => 4,
                 'password' => Hash::make('password123'),
                 'api_token' => Str::random(60),
             ],

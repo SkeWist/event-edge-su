@@ -11,6 +11,7 @@ use App\Http\Controllers\StageTypeController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
+use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,7 +43,8 @@ Route::prefix('guest')->group(function () {
 });
 
 //Пользовательский функционал
-Route::middleware(['auth:api', \App\Http\Middleware\RoleMiddleware::class . ':4'])->prefix('user')->group(function () {
+Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
+    Route::post('/profile/update', [UserController::class, 'updateProfile']);
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
@@ -62,8 +64,30 @@ Route::middleware(['auth:api', \App\Http\Middleware\RoleMiddleware::class . ':4'
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
 });
 
+Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function () {
+    Route::post('/profile/update', [UserController::class, 'updateProfile']);
+    Route::get('/tournaments', [TournamentController::class, 'index']);
+    Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
+    Route::get('/teams', [TeamController::class, 'index']);
+    Route::get('game-matches', [GameMatchController::class, 'index']);
+    Route::get('game-matches/{id}', [GameMatchController::class, 'show']);
+    Route::get('stages', [GameMatchController::class, 'index']);
+    Route::get('stages/{id}', [GameMatchController::class, 'show']);
+    Route::get('news-feeds', [NewsFeedController::class, 'index']);
+    Route::get('news-feeds/{id}', [NewsFeedController::class, 'show']);
+    Route::get('games', [GameController::class, 'index']);
+    Route::get('games/{id}', [GameController::class, 'show']);
+    Route::get('team-invites', [TeamInviteController::class, 'index'])->middleware('auth');
+    Route::post('team-invites/{inviteId}/accept', [TeamInviteController::class, 'accept'])->middleware('auth');
+    Route::post('team-invites/{inviteId}/decline', [TeamInviteController::class, 'decline'])->middleware('auth');
+    Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
+    Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
+    Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
+    Route::post('/tournaments/create', [TournamentController::class, 'store']);
+});
+
 //Админский функционал
-Route::middleware(['auth:api', \App\Http\Middleware\RoleMiddleware::class . ':1'])->prefix('admin')->group(function () {
+Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     // Просмотр списка турниров
     Route::get('/tournaments', [TournamentController::class, 'index']);
     // Просмотр турнира
