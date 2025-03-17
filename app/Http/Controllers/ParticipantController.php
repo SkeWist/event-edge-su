@@ -115,23 +115,8 @@ class ParticipantController extends Controller
     }
     public function myProfile(Request $request)
     {
-        // Принудительно загружаем JSON-данные в запрос
-        $request->merge(json_decode($request->getContent(), true) ?? []);
-
-        // Получаем токен из тела запроса
-        $token = $request->input('token');
-
-        if (!$token) {
-            return response()->json(['error' => 'Токен обязателен.'], 400);
-        }
-
-        // Убираем возможный префикс "Bearer "
-        if (str_starts_with($token, 'Bearer ')) {
-            $token = substr($token, 7);
-        }
-
-        // Находим пользователя по токену
-        $user = User::where('api_token', $token)->first();
+        // Получаем текущего авторизированного пользователя
+        $user = auth()->user();
 
         if (!$user) {
             return response()->json(['error' => 'Пользователь не найден или токен недействителен.'], 401);
@@ -181,7 +166,6 @@ class ParticipantController extends Controller
             ] : null,
         ]);
     }
-
     // Удаление участника турнира
     public function destroy($id)
     {

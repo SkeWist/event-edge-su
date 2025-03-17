@@ -30,15 +30,15 @@ Route::prefix('guest')->group(function () {
     Route::get('/teams', [TeamController::class, 'index']);
     Route::get('/game-matches', [GameMatchController::class, 'index']);
     Route::get('/game-matches/{id}', [GameMatchController::class, 'show']);
-    Route::get('/stages', [GameMatchController::class, 'index']);
-    Route::get('/stages/{id}', [GameMatchController::class, 'show']);
+    Route::get('/stages', [StageController::class, 'index']);
+    Route::get('/stages/{id}', [StageController::class, 'show']);
     Route::get('/news-feeds', [NewsFeedController::class, 'index']);
     Route::get('/news-feeds/{id}', [NewsFeedController::class, 'show']);
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::get('/participants/profile/{userId}', [ParticipantController::class, 'profile']);
-    Route::get('/participants/my-profile', [ParticipantController::class, 'myProfile']);
+    Route::middleware('auth:api')->get('participants/my-profile', [ParticipantController::class, 'myProfile']);
 });
 
 //Пользовательский функционал
