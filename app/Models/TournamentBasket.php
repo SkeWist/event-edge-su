@@ -33,5 +33,9 @@ class TournamentBasket extends Model
     {
         return $this->belongsTo(Team::class, 'team_b_id');
     }
-}
 
+    public function winnerTeam()
+    {
+        return $this->belongsTo(Team::class, 'winner_team_id');
+    }
+}

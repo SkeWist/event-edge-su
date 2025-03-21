@@ -10,6 +10,15 @@ class StageTypeController extends Controller
     /**
      * Создание нового типа этапа.
      */
+    public function index()
+    {
+        // Получаем все типы этапов
+        $stageTypes = StageType::all();
+
+        return response()->json([
+            'stage_types' => $stageTypes
+        ]);
+    }
     public function store(Request $request)
     {
         // Валидация входных данных

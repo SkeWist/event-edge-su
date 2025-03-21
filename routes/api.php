@@ -37,9 +37,12 @@ Route::prefix('guest')->group(function () {
     Route::get('/news-feeds/{id}', [NewsFeedController::class, 'show']);
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{id}', [GameController::class, 'show']);
+    Route::get('/stage-type', [StageTypeController::class, 'index']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::get('/participants/profile/{userId}', [ParticipantController::class, 'profile']);
     Route::middleware('auth:api')->get('participants/my-profile', [ParticipantController::class, 'myProfile']);
+    Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
+    Route::get('/statistics', [TournamentController::class, 'getStatistics']);
 });
 
 //Пользовательский функционал
@@ -188,6 +191,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::post('/tournaments/add-match', [TournamentController::class, 'addMatchToTournament']);
     // Роут для обновления результата матча
     Route::post('/tournaments/{tournamentId}/matches/{matchId}/update-result', [TournamentController::class, 'updateMatchResult']);
-    // Роут для получения турнирной сетки
-    Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
+    // Роут для удаления матча
+    Route::delete('/tournaments/{tournamentId}/matches/{matchId}', [TournamentController::class, 'removeMatchFromTournament']);
 });

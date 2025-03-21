@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GameMatch;
+use App\Models\Participant;
 use App\Models\Team;
 use App\Models\Tournament;
 use App\Models\TournamentBasket;
@@ -66,38 +67,51 @@ class TournamentController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'required|in:pending,ongoing,completed', // Проверка статуса
+            'status' => 'required|in:pending,ongoing,completed',
             'teams' => 'nullable|array',
-            'teams.*' => 'exists:teams,id', // Проверка каждого идентификатора команды
+            'teams.*' => 'exists:teams,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
-        // Если валидация не прошла
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Определяем пользователя по токену
-        $userId = Auth::id(); // Получаем ID текущего аутентифицированного пользователя
+        // Логируем факт получения запроса
+        Log::info('Запрос на создание турнира', $request->all());
 
-        // Создаем турнир
-        $tournament = Tournament::create(array_merge(
-            $request->except('teams'), // Убираем teams из входящих данных
-            ['views_count' => 0, 'user_id' => $userId] // Добавляем user_id
-        ));
+        // Обработка загрузки изображения
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
 
-        // Если переданы команды, прикрепляем их
-        if ($request->has('teams') && is_array($request->teams)) {
-            $validTeams = Team::whereIn('id', $request->teams)->pluck('id')->toArray();
-
-            if (count($validTeams) !== count($request->teams)) {
-                return response()->json(['error' => 'Some teams are invalid.'], 400);
+            if ($file->isValid()) {
+                $imagePath = $file->store('tournament_images', 'public');
+                Log::info('Файл успешно загружен', ['path' => $imagePath]);
+            } else {
+                Log::error('Ошибка загрузки изображения');
+                return response()->json(['error' => 'Ошибка загрузки изображения'], 400);
             }
-
-            $tournament->teams()->attach($validTeams);
+        } else {
+            Log::warning('Файл изображения отсутствует в запросе');
         }
 
-        // Загружаем связанные данные
-        $tournament->load('teams');
+        // Определяем пользователя
+        $userId = Auth::id();
+
+        // Создаем турнир
+        $tournament = new Tournament();
+        $tournament->name = $request->name;
+        $tournament->description = $request->description;
+        $tournament->start_date = $request->start_date;
+        $tournament->end_date = $request->end_date;
+        $tournament->game_id = $request->game_id;
+        $tournament->stage_id = $request->stage_id;
+        $tournament->status = $request->status;
+        $tournament->views_count = 0;
+        $tournament->user_id = $userId;
+        $tournament->image = $imagePath; // Записываем путь к изображению
+        $tournament->save();
 
         // Добавляем статусное название
         $statusNames = [
@@ -106,9 +120,17 @@ class TournamentController extends Controller
             'completed' => 'Завершен',
         ];
 
-        $tournament->status_name = $statusNames[$tournament->status] ?? 'Неизвестно';
-
-        return response()->json($tournament, 201);
+        return response()->json([
+            'id' => $tournament->id,
+            'name' => $tournament->name,
+            'description' => $tournament->description,
+            'start_date' => $tournament->start_date,
+            'end_date' => $tournament->end_date,
+            'stage_id' => $tournament->stage_id,
+            'views_count' => $tournament->views_count,
+            'status_name' => $statusNames[$tournament->status] ?? 'Неизвестно',
+            'image' => $imagePath ? asset('storage/' . $imagePath) : null // Ссылка на изображение
+        ], 201);
     }
     // Просмотр одного турнира
     public function show($id)
@@ -215,7 +237,8 @@ class TournamentController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'game_id' => 'nullable|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|string|in:upcoming,ongoing,completed' // Добавляем валидацию для статуса
+            'status' => 'nullable|string|in:upcoming,ongoing,completed',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         if ($validator->fails()) {
@@ -223,7 +246,14 @@ class TournamentController extends Controller
         }
 
         $tournament = Tournament::findOrFail($id);
-        $tournament->update($request->except('teams'));
+
+        // Загрузка нового изображения (если оно передано)
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('tournament_images', 'public');
+            $tournament->image = $imagePath;
+        }
+
+        $tournament->update($request->except('image'));
 
         // Добавляем статус в ответе
         return response()->json([
@@ -234,6 +264,7 @@ class TournamentController extends Controller
             'end_date' => $tournament->end_date,
             'views_count' => $tournament->views_count,
             'status_name' => $this->getStatusName($tournament->status),
+            'image' => $imagePath ? asset('storage/' . $imagePath) : null,
             'organizer' => $tournament->organizer ? [
                 'id' => $tournament->organizer->id,
                 'name' => $tournament->organizer->name,
@@ -246,10 +277,6 @@ class TournamentController extends Controller
                 'id' => $tournament->stage->id,
                 'name' => $tournament->stage->name,
             ] : null,
-            'teams' => $tournament->teams->map(fn($team) => [
-                'id' => $team->id,
-                'name' => $team->name,
-            ]),
         ]);
     }
     public function addMatchToTournament(Request $request)
@@ -322,6 +349,32 @@ class TournamentController extends Controller
         $tournament = Tournament::with('baskets.teamA', 'baskets.teamB', 'baskets.winnerTeam')->findOrFail($tournamentId);
 
         return response()->json($tournament->baskets);
+    }
+    public function removeMatchFromTournament($tournamentId, $matchId)
+    {
+        // Проверяем существование матча в сетке турнира
+        $match = TournamentBasket::where('tournament_id', $tournamentId)
+            ->where('game_match_id', $matchId)
+            ->first();
+
+        if (!$match) {
+            return response()->json(['error' => 'Матч не найден в турнирной сетке'], 404);
+        }
+
+        // Удаляем матч из турнирной сетки
+        $match->delete();
+
+        return response()->json(['message' => 'Матч удален из турнирной сетки']);
+    }
+    public function getStatistics()
+    {
+        $statistics = [
+            'tournaments_count' => Tournament::count(),
+            'players_count' => Participant::count(), // Если игроки у тебя хранятся в Team
+            'matches_count' => GameMatch::count(),
+        ];
+
+        return response()->json($statistics);
     }
     // Удаление турнира
     public function destroy($id)

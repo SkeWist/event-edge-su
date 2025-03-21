@@ -22,6 +22,7 @@ return new class extends Migration
             $table->foreignId('stage_id')->nullable()->constrained()->onDelete('set null');
             $table->unsignedInteger('views_count')->default(0);
             $table->enum('status', ['pending', 'ongoing', 'completed'])->default('pending'); // Добавили статус
+            $table->string('image')->nullable();
             $table->timestamps();
         });
 
