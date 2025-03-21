@@ -2,39 +2,38 @@
 
 namespace Database\Seeders;
 
-use App\Models\GameMatch;
-use App\Models\Tournament;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\TournamentBasket;
+use App\Models\Tournament;
+use App\Models\GameMatch;
+use App\Models\Team;
 
 class TournamentsBasketSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
     {
-        // Пример: добавление нескольких матчей для турниров
-        $tournaments = Tournament::all(); // Получаем все турниры
-        $gameMatches = GameMatch::all(); // Получаем все игровые матчи
+        $tournaments = Tournament::all();
+        $matches = GameMatch::all();
+        $teams = Team::all();
 
-        // Проверяем, есть ли турниры и матчи
-        if ($tournaments->isEmpty() || $gameMatches->isEmpty()) {
-            $this->command->info("Нет турниров или матчей в базе данных.");
+        if ($tournaments->isEmpty() || $matches->isEmpty() || $teams->count() < 2) {
+            $this->command->warn('Недостаточно данных для сидирования турнирной сетки.');
             return;
         }
 
-        // Добавляем матчи к турнирам
         foreach ($tournaments as $tournament) {
-            // Для каждого турнира добавляем случайные матчи
-            $matches = $gameMatches->random(3); // Выбираем 3 случайных матча для турнира
-
-            foreach ($matches as $match) {
-                // Пример: добавление результата "win", "lose" или "draw" для матчей
-                $result = ['win', 'lose', 'draw'][array_rand(['win', 'lose', 'draw'])];
-
-                // Добавление записи в промежуточную таблицу
-                $tournament->gameMatches()->attach($match->id, ['result' => $result]);
+            foreach ($matches->random(min(3, $matches->count())) as $match) {
+                TournamentBasket::create([
+                    'tournament_id' => $tournament->id,
+                    'game_match_id' => $match->id,
+                    'status' => ['pending', 'completed', 'canceled'][rand(0, 2)],
+                    'result' => rand(0, 1) ? rand(0, 5) . ':' . rand(0, 5) : null,
+                    'winner_team_id' => rand(0, 1) ? $teams->random()->id : null,
+                ]);
             }
         }
-
-        $this->command->info('Таблица tournaments_basket успешно наполнена.');
     }
 }

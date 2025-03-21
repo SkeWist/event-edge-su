@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('game_match_id');
             $table->foreign('game_match_id')->references('id')->on('game_matches')->onDelete('cascade');
             $table->string('status')->nullable();
+            $table->string('result')->nullable();
             $table->unsignedBigInteger('winner_team_id')->nullable();
             $table->timestamps();
         });

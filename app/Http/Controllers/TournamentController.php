@@ -37,7 +37,8 @@ class TournamentController extends Controller
                 'organizer' => $tournament->organizer,
                 'game' => $tournament->game,
                 'stage' => $tournament->stage,
-                'teams' => $tournament->teams
+                'teams' => $tournament->teams,
+                'image' => $tournament->image
             ];
         });
 
@@ -320,13 +321,15 @@ class TournamentController extends Controller
     {
         // Валидация данных
         $validated = $request->validate([
-            'winner_team_id' => 'required|exists:teams,id', // Проверка на существование победителя
+            'winner_team_id' => 'nullable|exists:teams,id', // Теперь необязательно
+            'status' => 'required|in:pending,completed,canceled',
+            'result' => 'required|string', // Проверяем, что передаётся результат в виде строки (например, "1:0")
         ]);
 
         // Получаем турнир
         $tournament = Tournament::findOrFail($tournamentId);
 
-        // Проверка, что матч существует в турнирной сетке
+        // Проверяем, что матч существует в турнирной сетке
         $match = TournamentBasket::where('tournament_id', $tournamentId)
             ->where('game_match_id', $matchId)
             ->first();
@@ -335,13 +338,42 @@ class TournamentController extends Controller
             return response()->json(['error' => 'Матч не найден в турнирной сетке'], 404);
         }
 
-        // Обновляем результат матча в турнирной сетке
-        $match->update([
-            'winner_team_id' => $validated['winner_team_id'], // Обновляем победителя
-            'status' => 'completed', // Обновляем статус на завершён
-        ]);
+        // Обновляем только те поля, которые переданы
+        $updateData = [
+            'status' => $validated['status'],
+            'result' => $validated['result'], // Сохраняем результат (например, "1:0")
+        ];
 
-        return response()->json(['message' => 'Результат матча обновлен'], 200);
+        // Если матч завершён, то нужно указать победителя
+        if ($validated['status'] === 'completed') {
+            if (empty($validated['winner_team_id'])) {
+                return response()->json(['error' => 'Для завершенного матча необходимо указать победителя'], 400);
+            }
+            $updateData['winner_team_id'] = $validated['winner_team_id'];
+        }
+
+        // Если матч отменён, обнуляем победителя и результат
+        if ($validated['status'] === 'canceled') {
+            $updateData['winner_team_id'] = null;
+            $updateData['result'] = null;
+        }
+
+        // Обновляем запись в турнирной сетке
+        $match->update($updateData);
+
+        // **Обновляем статус и результат в `game_matches`**
+        $gameMatch = GameMatch::find($match->game_match_id);
+        if ($gameMatch) {
+            $gameMatch->update([
+                'status' => $validated['status'],
+                'result' => $validated['result'], // Сохраняем результат в `game_matches`
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Результат матча обновлён',
+            'match' => $match
+        ], 200);
     }
     // Метод для получения турнирной сетки
     public function getTournamentBasket($tournamentId)

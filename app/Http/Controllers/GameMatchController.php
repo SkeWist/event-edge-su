@@ -55,11 +55,12 @@ class GameMatchController extends Controller
     {
         // Валидация данных
         $validator = Validator::make($request->all(), [
-            'game_id' => 'required|exists:games,id',
+            'tournament_id' => 'required|exists:tournaments,id',
             'team_1_id' => 'required|exists:teams,id',
             'team_2_id' => 'required|exists:teams,id',
             'match_date' => 'required|date_format:d.m.Y',
             'stage_id' => 'nullable|exists:stages,id',
+            'status' => 'required|in:pending,completed,canceled',
         ]);
 
         if ($validator->fails()) {
@@ -70,11 +71,12 @@ class GameMatchController extends Controller
 
         // Создание нового матча
         $match = GameMatch::create([
-            'game_id' => $request->game_id,
+            'tournament_id' => $request->tournament_id,
             'team_1_id' => $request->team_1_id,
             'team_2_id' => $request->team_2_id,
             'match_date' => $match_date,
             'stage_id' => $request->stage_id,
+            'status' => $request->status,
         ]);
 
         return response()->json([
@@ -90,11 +92,12 @@ class GameMatchController extends Controller
     {
         // Валидация данных
         $validator = Validator::make($request->all(), [
-            'game_id' => 'nullable|exists:games,id',
+            'tournament_id' => 'required|exists:tournaments,id',
             'team_1_id' => 'nullable|exists:teams,id',
             'team_2_id' => 'nullable|exists:teams,id',
             'match_date' => 'nullable|date_format:d.m.Y',
             'stage_id' => 'nullable|exists:stages,id',
+            'status' => 'required|in:pending,completed,canceled',
         ]);
 
         if ($validator->fails()) {
