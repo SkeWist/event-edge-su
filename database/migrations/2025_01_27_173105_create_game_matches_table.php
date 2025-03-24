@@ -19,7 +19,8 @@ return new class extends Migration
             $table->timestamp('match_date'); // Дата и время матча
             $table->text('status');
             $table->text('result')->nullable();
-            $table->foreignId('stage_id')->nullable()->constrained('stages'); // Этап турнира
+            $table->foreignId('stage_id')->nullable()->constrained('stages'); // Этап
+            $table->unsignedBigInteger('winner_team_id')->nullable();
             $table->timestamps();
         });
     }

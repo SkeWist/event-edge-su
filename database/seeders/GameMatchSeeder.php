@@ -2,49 +2,39 @@
 
 namespace Database\Seeders;
 
+use App\Models\Team;
+use App\Models\Tournament;
 use Illuminate\Database\Seeder;
 use App\Models\GameMatch;
 use Carbon\Carbon;
 
 class GameMatchSeeder extends Seeder
 {
-    /**
-     * Запуск сидера.
-     */
     public function run()
     {
-        $matches = [
-            [
-                'tournament_id' => 1,
-                'team_1_id' => 1,
-                'team_2_id' => 2,
-                'match_date' => Carbon::now()->subDays(3),
-                'stage_id' => 1,
-                'status' => 'completed',
-                'result' => '2:1'
-            ],
-            [
-                'tournament_id' => 1,
-                'team_1_id' => 1,
-                'team_2_id' => 3,
-                'match_date' => Carbon::now()->subDays(2),
-                'stage_id' => 1,
-                'status' => 'pending',
-                'result' => null
-            ],
-            [
-                'tournament_id' => 2,
-                'team_1_id' => 2,
-                'team_2_id' => 4,
-                'match_date' => Carbon::now()->addDays(1),
-                'stage_id' => 2,
-                'status' => 'pending',
-                'result' => null
-            ],
-        ];
+        $tournaments = Tournament::all();
+        $teams = Team::pluck('id')->toArray();
 
-        foreach ($matches as $match) {
-            GameMatch::create($match);
+        if (count($teams) < 2) {
+            $this->command->error('Недостаточно команд для создания матчей!');
+            return;
+        }
+
+        foreach ($tournaments as $tournament) {
+            shuffle($teams);
+            $team1 = $teams[0];
+            $team2 = $teams[1];
+
+            GameMatch::create([
+                'tournament_id' => $tournament->id,
+                'team_1_id' => $team1,
+                'team_2_id' => $team2,
+                'match_date' => Carbon::now()->addDays(rand(1, 30)),
+                'stage_id' => 1,
+                'status' => 'pending',
+                'result' => null,
+                'winner_team_id' => rand(0, 1) ? $team1 : $team2, // случайный победитель
+            ]);
         }
     }
 }

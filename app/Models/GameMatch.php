@@ -8,7 +8,7 @@ class GameMatch extends Model
 {
     protected $fillable = [
         'tournament_id', 'team_1_id', 'team_2_id',
-        'match_date', 'result', 'status', 'stage_id'
+        'match_date', 'result', 'status', 'stage_id', 'winner_team_id'
     ];
     public function game()
     {
@@ -23,11 +23,6 @@ class GameMatch extends Model
     public function team2()
     {
         return $this->belongsTo(Team::class, 'team_2_id');
-    }
-
-    public function winnerTeam()
-    {
-        return $this->belongsTo(Team::class, 'winner_team_id');
     }
 
     public function stage()
@@ -45,10 +40,10 @@ class GameMatch extends Model
     {
         return $this->belongsToMany(Participant::class, 'match_participant', 'game_match_id', 'participant_id');
     }
-
-    /**
-     * Scope для фильтрации матчей, которые ещё не начались.
-     */
+    public function winnerTeam()
+    {
+        return $this->belongsTo(Team::class, 'winner_team_id');
+    }
     public function scopeActive($query)
     {
         return $query->where('match_date', '>=', now());

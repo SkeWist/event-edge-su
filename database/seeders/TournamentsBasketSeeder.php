@@ -31,7 +31,6 @@ class TournamentsBasketSeeder extends Seeder
                     'game_match_id' => $match->id,
                     'status' => ['pending', 'completed', 'canceled'][rand(0, 2)],
                     'result' => rand(0, 1) ? rand(0, 5) . ':' . rand(0, 5) : null,
-                    'winner_team_id' => rand(0, 1) ? $teams->random()->id : null,
                 ]);
             }
         }

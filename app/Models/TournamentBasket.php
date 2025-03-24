@@ -11,7 +11,6 @@ class TournamentBasket extends Model
         'tournament_id',
         'game_match_id',
         'status',
-        'winner_team_id',
         'result'
     ];
 
