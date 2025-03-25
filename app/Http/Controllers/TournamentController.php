@@ -293,29 +293,26 @@ class TournamentController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Получаем tournament_id из запроса
-        $tournamentId = $request->tournament_id;
-        // Проверка, что матч не был уже добавлен в турнир
-        $existingMatch = TournamentBasket::where('tournament_id', $tournamentId)
-            ->where('game_match_id', $request->game_match_id)
-            ->first();
+        // Проверка, что матч уже привязан к какому-либо турниру
+        $existingMatch = TournamentBasket::where('game_match_id', $request->game_match_id)->exists();
 
         if ($existingMatch) {
-            return response()->json(['message' => 'Этот матч уже добавлен в турнир.'], 400);
+            return response()->json(['message' => 'Этот матч уже добавлен в другой турнир и не может быть повторно использован.'], 400);
         }
 
         // Создание записи в турнирной сетке
         TournamentBasket::create([
-            'tournament_id' => $request->tournament_id, // Должно быть передано из запроса
+            'tournament_id' => $request->tournament_id,
             'game_match_id' => $request->game_match_id,
-            'status' => $request->status, // Используем статус вместо результата
-            'winner_team_id' => null, // Победитель не указан на момент добавления
+            'status' => $request->status,
+            'winner_team_id' => null,
         ]);
 
         return response()->json([
             'message' => 'Матч успешно добавлен в турнирную сетку!',
         ]);
     }
+
     // Метод для обновления результата матча и определения победителя
     public function updateMatchResult(Request $request, $tournamentId, $matchId)
     {

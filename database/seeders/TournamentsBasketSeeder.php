@@ -15,24 +15,21 @@ class TournamentsBasketSeeder extends Seeder
      */
     public function run(): void
     {
-        $tournaments = Tournament::all();
-        $matches = GameMatch::all();
-        $teams = Team::all();
+        $tournaments = Tournament::take(3)->get();
+        $matches = GameMatch::take(3)->get();
 
-        if ($tournaments->isEmpty() || $matches->isEmpty() || $teams->count() < 2) {
+        if ($tournaments->count() < 3 || $matches->count() < 3) {
             $this->command->warn('Недостаточно данных для сидирования турнирной сетки.');
             return;
         }
 
-        foreach ($tournaments as $tournament) {
-            foreach ($matches->random(min(3, $matches->count())) as $match) {
-                TournamentBasket::create([
-                    'tournament_id' => $tournament->id,
-                    'game_match_id' => $match->id,
-                    'status' => ['pending', 'completed', 'canceled'][rand(0, 2)],
-                    'result' => rand(0, 1) ? rand(0, 5) . ':' . rand(0, 5) : null,
-                ]);
-            }
+        foreach ($tournaments as $index => $tournament) {
+            TournamentBasket::create([
+                'tournament_id' => $tournament->id,
+                'game_match_id' => $matches[$index]->id,
+                'status' => ['pending', 'completed', 'canceled'][rand(0, 2)],
+                'result' => rand(0, 1) ? rand(0, 5) . ':' . rand(0, 5) : null,
+            ]);
         }
     }
 }

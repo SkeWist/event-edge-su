@@ -58,7 +58,7 @@ class GameMatchController extends Controller
             'tournament_id' => 'required|exists:tournaments,id',
             'team_1_id' => 'required|exists:teams,id',
             'team_2_id' => 'required|exists:teams,id',
-            'match_date' => 'required|date_format:d.m.Y',
+            'match_date' => 'required|date_format:Y-m-d\TH:i',
             'stage_id' => 'nullable|exists:stages,id',
             'status' => 'required|in:pending,completed,canceled',
         ]);
@@ -67,7 +67,15 @@ class GameMatchController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        $match_date = Carbon::createFromFormat('d.m.Y', $request->match_date)->format('Y-m-d H:i:s');
+        try {
+            // Преобразование строки даты в объект Carbon
+            $match_date = Carbon::createFromFormat('Y-m-d\TH:i', $request->match_date);
+
+            // Преобразуем дату в формат, который можно сохранить в базе данных (Y-m-d H:i:s)
+            $match_date = $match_date->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Неверный формат даты и времени'], 400);
+        }
 
         // Создание нового матча
         $match = GameMatch::create([
@@ -111,7 +119,7 @@ class GameMatchController extends Controller
         ]);
 
         if ($request->has('match_date')) {
-            $updateData['match_date'] = Carbon::createFromFormat('d.m.Y', $request->match_date)->format('Y-m-d H:i:s');
+        $updateData['match_date'] = Carbon::createFromFormat('d.m.Y', $request->match_date)->format('Y-m-d H:i:s');
         }
 
         $match->update(array_filter($updateData));
