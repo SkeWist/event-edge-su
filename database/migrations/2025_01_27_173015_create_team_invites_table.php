@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams');
             $table->foreignId('user_id')->constrained('users');
             $table->timestamp('expires_at');
-            $table->string('status');
+            $table->enum('status', ['pending', 'accepted', 'rejected'])->default('pending');
             $table->timestamps();
         });
     }

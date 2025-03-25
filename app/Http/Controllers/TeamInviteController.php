@@ -5,95 +5,88 @@ namespace App\Http\Controllers;
 use App\Models\TeamInvite;
 use App\Models\Team;
 use App\Models\User;
+use App\Notifications\TeamInviteNotification;
+use App\Notifications\TeamInviteResponseNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class TeamInviteController extends Controller
 {
-    /**
-     * Просмотр списка приглашений для пользователя.
-     */
-    public function index(Request $request)
+    public function sendInvite(Request $request)
     {
-        // Получаем все приглашения для текущего пользователя
-        $userId = $request->user()->id;
-
-        $invites = TeamInvite::where('user_id', $userId)->get();
-
-        return response()->json($invites);
-    }
-
-    /**
-     * Создание нового приглашения в команду.
-     */
-    public function store(Request $request)
-    {
-        // Валидация входных данных
-        $request->validate([
-            'team_id' => 'required|exists:teams,id',
-            'user_id' => 'required|exists:users,id',
-            'expires_at' => 'required|date|after:now', // Время истечения приглашения
+        // Валидация данных
+        $validated = $request->validate([
+            'team_id' => 'required|exists:teams,id', // Проверяем, что команда существует
+            'user_id' => 'required|exists:users,id', // Проверяем, что пользователь существует
+            'expires_at' => 'required|date|after:now', // Время, до которого действует приглашение
+            'message' => 'nullable|string|max:255'// Кастомное сообщение
         ]);
 
-        // Создание нового приглашения
+        // Проверяем, существует ли уже приглашение для этого пользователя в эту команду
+        $existingInvite = TeamInvite::where('team_id', $validated['team_id'])
+            ->where('user_id', $validated['user_id'])
+            ->first();
+
+        if ($existingInvite) {
+            return response()->json(['message' => 'Пользователь уже был приглашён в эту команду.'], 400);
+        }
+
+        // Получаем команду
+        $team = Team::find($validated['team_id']);
+
+        // Создаём приглашение
         $invite = TeamInvite::create([
-            'team_id' => $request->input('team_id'),
-            'user_id' => $request->input('user_id'),
-            'expires_at' => $request->input('expires_at'),
-            'status' => TeamInvite::STATUS_PENDING, // Статус "ожидает"
+            'team_id' => $validated['team_id'],
+            'user_id' => $validated['user_id'],
+            'expires_at' => Carbon::parse($validated['expires_at']),
+            'status' => 'pending', // Статус "ожидает"
+            'message' => $validated['message'],
         ]);
 
-        return response()->json([
-            'message' => 'Приглашение успешно отправлено!',
-            'invite' => $invite,
-        ], 201);
-    }
-    /**
-     * Принятие приглашения.
-     */
-    public function accept($inviteId)
-    {
-        // Поиск приглашения по ID
-        $invite = TeamInvite::findOrFail($inviteId);
+        // Формируем сообщение, если не передано кастомное
+        $message = $validated['message'] ?: "Вы приглашены в команду: " . $team->name; // Формируем сообщение с названием команды
 
-        // Обновляем статус на "принято"
-        $invite->status = TeamInvite::STATUS_ACCEPTED;
+        // Находим пользователя, которому отправляем приглашение
+        $user = User::find($validated['user_id']);
+
+        // Отправляем уведомление пользователю с дефолтным или кастомным сообщением
+        $user->notify(new TeamInviteNotification($invite, $message)); // $message — это строка
+
+        return response()->json([
+            'message' => 'Приглашение успешно отправлено пользователю.',
+            'invite' => $invite,
+        ]);
+    }
+    public function respondInvite(Request $request)
+    {
+        // Валидация данных
+        $validated = $request->validate([
+            'invite_id' => 'required|exists:team_invites,id', // Проверяем, что приглашение существует
+            'response' => 'required|in:accepted,rejected', // Проверяем, что ответ валиден
+        ]);
+
+        // Находим приглашение по ID
+        $invite = TeamInvite::find($validated['invite_id']);
+
+        // Проверяем, что приглашение еще не было отклонено или принято
+        if ($invite->status != 'pending') {
+            return response()->json(['message' => 'Приглашение уже было обработано.'], 400);
+        }
+
+        // Обновляем статус приглашения
+        $invite->status = $validated['response'];
         $invite->save();
 
+        // Находим пользователя, которому отправлено приглашение
+        $user = User::find($invite->user_id);
+
+        // Отправляем уведомление о принятии или отклонении приглашения
+        $message = $validated['response'] == 'accepted' ? 'Вы приняли приглашение в команду.' : 'Вы отклонили приглашение в команду.';
+        $user->notify(new TeamInviteResponseNotification($invite, $message));
+
         return response()->json([
-            'message' => 'Приглашение принято!',
+            'message' => 'Ваш ответ на приглашение успешно обновлен.',
             'invite' => $invite,
         ]);
-    }
-    /**
-     * Отклонение приглашения.
-     */
-    public function decline($inviteId)
-    {
-        // Поиск приглашения по ID
-        $invite = TeamInvite::findOrFail($inviteId);
-
-        // Обновляем статус на "отклонено"
-        $invite->status = TeamInvite::STATUS_DECLINED;
-        $invite->save();
-
-        return response()->json([
-            'message' => 'Приглашение отклонено!',
-            'invite' => $invite,
-        ]);
-    }
-    /**
-     * Удаление приглашения.
-     */
-    public function destroy($inviteId)
-    {
-        // Поиск приглашения по ID
-        $invite = TeamInvite::findOrFail($inviteId);
-
-        // Удаление приглашения
-        $invite->delete();
-
-        return response()->json([
-            'message' => 'Приглашение удалено!',
-        ], 204);
     }
 }

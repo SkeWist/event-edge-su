@@ -66,6 +66,8 @@ Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
+    Route::post('/send-invite', [TeamInviteController::class, 'sendInvite']);
+    Route::post('/invite/respond', [TeamInviteController::class, 'respondInvite']);
 });
 
 Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function () {

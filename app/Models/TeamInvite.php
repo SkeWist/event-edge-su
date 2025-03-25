@@ -9,19 +9,20 @@ class TeamInvite extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['team_id', 'user_id', 'status'];
-
-    const STATUS_PENDING = 'pending';
-    const STATUS_ACCEPTED = 'accepted';
-    const STATUS_DECLINED = 'declined';
+    protected $fillable = [
+        'team_id',
+        'user_id',
+        'expires_at',
+        'status',
+    ];
 
     public function team()
     {
-        return $this->belongsTo(Team::class)->withDefault();
+        return $this->belongsTo(Team::class);
     }
 
     public function user()
     {
-        return $this->belongsTo(User::class)->withDefault();
+        return $this->belongsTo(User::class);
     }
 }
