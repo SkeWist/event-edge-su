@@ -319,47 +319,95 @@ class TournamentController extends Controller
     // Метод для обновления результата матча и определения победителя
     public function updateMatchResult(Request $request, $tournamentId, $matchId)
     {
-        $validated = $request->validate([
-            'winner_team_id' => 'nullable|exists:teams,id',
-            'status' => 'required|in:pending,completed,canceled',
-            'result' => 'nullable|string'
+        // Валидация данных
+        $validator = Validator::make($request->all(), [
+            'result' => 'required|string', // Результат матча
+            'status' => 'required|in:scheduled,in_progress,completed', // Статус матча
+            'winner_team_id' => 'required|exists:teams,id', // Победитель матча
         ]);
 
-        // Получаем запись матча из game_matches
-        $gameMatch = GameMatch::findOrFail($matchId);
-
-        // Обновляем статус и результат в game_matches
-        $updateData = [
-            'status' => $validated['status'],
-            'result' => $validated['result'] ?? $gameMatch->result,
-        ];
-
-        // Если матч завершён, устанавливаем победителя
-        if ($validated['status'] === 'completed') {
-            if (empty($validated['winner_team_id'])) {
-                return response()->json(['error' => 'Для завершенного матча необходимо указать победителя'], 400);
-            }
-            $updateData['winner_team_id'] = $validated['winner_team_id'];
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Если матч отменён, обнуляем победителя
-        if ($validated['status'] === 'canceled') {
-            $updateData['winner_team_id'] = null;
+        // Проверяем, что турнир существует и что это турнир с id = 1
+        if ($tournamentId != 1) {
+            return response()->json(['message' => 'Турнир не найден или ID турнира недействителен.'], 400);
         }
 
-        $gameMatch->update($updateData);
+        // Находим матч в турнирной сетке для данного турнира
+        $match = TournamentBasket::where('game_match_id', $matchId)
+            ->where('tournament_id', $tournamentId) // Проверяем, что матч принадлежит нужному турниру
+            ->first();
 
+        if (!$match) {
+            return response()->json(['message' => 'Матч не найден в турнирной сетке для данного турнира.'], 404);
+        }
+
+        // Обновление результата в таблице TournamentBaskets
+        $match->update([
+            'result' => $request->result, // Обновляем результат
+            'status' => $request->status, // Обновляем статус
+            'winner_team_id' => $request->winner_team_id, // Обновляем победителя
+        ]);
+
+        // Теперь обновляем результат в таблице game_matches
+        $gameMatch = $match->gameMatch; // Получаем сам матч через связь
+
+        // Обновляем поле result в таблице game_matches
+        $gameMatch->update([
+            'result' => $request->result, // Обновляем результат матча
+            'status' => $request->status, // Обновляем статус
+            'winner_team_id' => $request->winner_team_id, // Обновляем победителя
+        ]);
+
+        // Если статус "completed", получаем команды и победителя
+        if ($request->status == 'completed') {
+            // Получаем команды через отношения
+            $teamA = $gameMatch->teamA; // Команда A (team_1)
+            $teamB = $gameMatch->teamB; // Команда B (team_2)
+            $winnerTeam = $gameMatch->winnerTeam; // Победитель
+
+            // Присваиваем полученные значения
+            $match->team_a = $teamA ? $teamA->name : null;
+            $match->team_b = $teamB ? $teamB->name : null;
+            $match->winner_team = $winnerTeam ? $winnerTeam->name : null;
+        }
+
+        // Возвращаем результат
         return response()->json([
             'message' => 'Результат матча обновлён',
-            'match' => $gameMatch
-        ], 200);
+            'match' => $match,
+        ]);
     }
-    // Метод для получения турнирной сетки
     public function getTournamentBasket($tournamentId)
     {
-        $tournament = Tournament::with('baskets.teamA', 'baskets.teamB', 'baskets.winnerTeam')->findOrFail($tournamentId);
+        // Загружаем турнир с его матчами и командами
+        $tournament = Tournament::with([
+            'baskets.gameMatch', // Загружаем сами матчи
+            'baskets.gameMatch.teamA', // Команда A через правильное имя отношения
+            'baskets.gameMatch.teamB', // Команда B через правильное имя отношения
+            'baskets.gameMatch.winnerTeam', // Победитель через правильное имя отношения
+        ])
+            ->findOrFail($tournamentId);
 
-        return response()->json($tournament->baskets);
+        // Формируем данные для отображения турнирной сетки
+        $basketData = $tournament->baskets->map(function ($basket) {
+            return [
+                'id' => $basket->id,
+                'tournament_id' => $basket->tournament_id,
+                'game_match_id' => $basket->game_match_id,
+                'status' => $basket->status,
+                'result' => $basket->gameMatch->result,
+                'team_a' => $basket->gameMatch->teamA ? $basket->gameMatch->teamA->name : null,
+                'team_b' => $basket->gameMatch->teamB ? $basket->gameMatch->teamB->name : null,
+                'winner_team' => $basket->gameMatch->winnerTeam ? $basket->gameMatch->winnerTeam->name : null,
+                'created_at' => $basket->created_at,
+                'updated_at' => $basket->updated_at,
+            ];
+        });
+
+        return response()->json($basketData);
     }
     public function removeMatchFromTournament($tournamentId, $matchId)
     {

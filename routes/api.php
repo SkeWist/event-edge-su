@@ -29,6 +29,7 @@ Route::prefix('guest')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
+    Route::get('/teams/{id}', [TeamController::class, 'show']);
     Route::get('/game-matches', [GameMatchController::class, 'index']);
     Route::get('/game-matches/{id}', [GameMatchController::class, 'show']);
     Route::get('/stages', [StageController::class, 'index']);

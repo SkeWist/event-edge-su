@@ -15,14 +15,14 @@ class GameMatch extends Model
         return $this->belongsTo(Game::class);
     }
 
-    public function team1()
+    public function teamA()
     {
-        return $this->belongsTo(Team::class, 'team_1_id');
+        return $this->belongsTo(Team::class, 'team_1_id'); // Предположим, что команда A связана с team_1_id
     }
 
-    public function team2()
+    public function teamB()
     {
-        return $this->belongsTo(Team::class, 'team_2_id');
+        return $this->belongsTo(Team::class, 'team_2_id'); // Предположим, что команда B связана с team_2_id
     }
 
     public function stage()
