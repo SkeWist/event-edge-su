@@ -43,6 +43,7 @@ Route::prefix('guest')->group(function () {
     Route::middleware('auth:api')->get('participants/my-profile', [ParticipantController::class, 'myProfile']);
     Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
     Route::get('/statistics', [TournamentController::class, 'getStatistics']);
+    Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
 });
 
 //Пользовательский функционал
@@ -193,4 +194,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::post('/tournaments/{tournamentId}/matches/{matchId}/update-result', [TournamentController::class, 'updateMatchResult']);
     // Роут для удаления матча
     Route::delete('/tournaments/{tournamentId}/matches/{matchId}', [TournamentController::class, 'removeMatchFromTournament']);
+    // Роут для отправки уведомлений (Обновление статуса турнира)
+    Route::post('/tournaments/{tournamentId}/status', [TournamentController::class, 'updateTournamentStatus']);
 });

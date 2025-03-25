@@ -2,11 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Notification extends Model
 {
-    protected $fillable = ['user_id', 'massage','created_at'];
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'message',
+    ];
+
+    // Связь с пользователем
     public function user()
     {
         return $this->belongsTo(User::class);

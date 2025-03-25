@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * Атрибуты, которые можно массово заполнять.

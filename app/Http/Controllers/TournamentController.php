@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\NotificationHelper;
 use App\Models\GameMatch;
 use App\Models\Participant;
 use App\Models\Team;
@@ -10,8 +11,10 @@ use App\Models\TournamentBasket;
 use App\Models\User;
 use App\Models\Game;
 use App\Models\Stage;
+use App\Notifications\TournamentStatusNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -373,6 +376,28 @@ class TournamentController extends Controller
         $match->delete();
 
         return response()->json(['message' => 'Матч удален из турнирной сетки']);
+    }
+    public function updateTournamentStatus(Request $request, $tournamentId)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:upcoming,ongoing,canceled,completed',
+        ]);
+
+        $tournament = Tournament::findOrFail($tournamentId);
+        $tournament->update(['status' => $validated['status']]);
+
+        // Определяем текст уведомления
+        $message = match ($validated['status']) {
+            'upcoming' => 'Турнир "' . $tournament->name . '" вот-вот начнётся!',
+            'ongoing' => 'Турнир "' . $tournament->name . '" начался!',
+            'canceled' => 'Турнир "' . $tournament->name . '" был отменён.',
+            'completed' => 'Турнир "' . $tournament->name . '" завершён!',
+        };
+
+        // Рассылаем уведомления всем пользователям
+        NotificationHelper::sendNotificationToAll($message);
+
+        return response()->json(['message' => 'Статус турнира обновлён и уведомления отправлены.']);
     }
     public function getStatistics()
     {
