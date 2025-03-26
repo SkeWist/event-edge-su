@@ -385,11 +385,11 @@ class TournamentController extends Controller
         // Загружаем турнир с его матчами и командами
         $tournament = Tournament::with([
             'baskets.gameMatch', // Загружаем сами матчи
-            'baskets.gameMatch.teamA', // Команда A через правильное имя отношения
-            'baskets.gameMatch.teamB', // Команда B через правильное имя отношения
-            'baskets.gameMatch.winnerTeam', // Победитель через правильное имя отношения
-        ])
-            ->findOrFail($tournamentId);
+            'baskets.gameMatch.teamA', // Команда A
+            'baskets.gameMatch.teamB', // Команда B
+            'baskets.gameMatch.winnerTeam', // Победитель
+            'baskets.gameMatch.stage', // Этап турнира
+        ])->findOrFail($tournamentId);
 
         // Формируем данные для отображения турнирной сетки
         $basketData = $tournament->baskets->map(function ($basket) {
@@ -404,10 +404,37 @@ class TournamentController extends Controller
                 'winner_team' => $basket->gameMatch->winnerTeam ? $basket->gameMatch->winnerTeam->name : null,
                 'created_at' => $basket->created_at,
                 'updated_at' => $basket->updated_at,
+                'game_match' => [
+                    'id' => $basket->gameMatch->id,
+                    'tournament_id' => $basket->gameMatch->tournament_id,
+                    'team_1_id' => $basket->gameMatch->team_1_id,
+                    'team_2_id' => $basket->gameMatch->team_2_id,
+                    'match_date' => $basket->gameMatch->match_date,
+                    'status' => $basket->gameMatch->status,
+                    'result' => $basket->gameMatch->result,
+                    'stage_id' => $basket->gameMatch->stage_id,
+                    'winner_team_id' => $basket->gameMatch->winner_team_id,
+                    'created_at' => $basket->gameMatch->created_at,
+                    'updated_at' => $basket->gameMatch->updated_at,
+                ],
             ];
         });
 
         return response()->json($basketData);
+    }
+    public function updateBasketResults(Request $request)
+    {
+        $validated = $request->validate([
+            'matches' => 'required|array',
+            'matches.*.match_id' => 'required|exists:game_matches,id',
+            'matches.*.winner_team_id' => 'required|exists:teams,id',
+        ]);
+
+        foreach ($validated['matches'] as $match) {
+            GameMatch::where('id', $match['match_id'])->update(['winner_team_id' => $match['winner_team_id']]);
+        }
+
+        return response()->json(['message' => 'Результаты обновлены успешно'], 200);
     }
     public function removeMatchFromTournament($tournamentId, $matchId)
     {
@@ -425,6 +452,57 @@ class TournamentController extends Controller
 
         return response()->json(['message' => 'Матч удален из турнирной сетки']);
     }
+    public function createStage(Request $request)
+    {
+        // Валидация входных данных
+        $validator = Validator::make($request->all(), [
+            'tournament_id' => 'required|exists:tournaments,id',
+            'stage_id' => 'required|integer|min:1',
+            'matches' => 'required|array|min:1',
+            'matches.*.team_1_id' => 'nullable|exists:teams,id',
+            'matches.*.team_2_id' => 'nullable|exists:teams,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()], 422);
+        }
+
+        // Проверяем существование турнира
+        $tournament = Tournament::find($request->tournament_id);
+        if (!$tournament) {
+            return response()->json(['error' => 'Турнир не найден.'], 404);
+        }
+
+        // Создаем матчи для новой стадии
+        $matches = [];
+        foreach ($request->matches as $matchData) {
+            $match = GameMatch::create([
+                'tournament_id' => $request->tournament_id,
+                'stage_id' => $request->stage_id,
+                'team_1_id' => $matchData['team_1_id'] ?? null,
+                'team_2_id' => $matchData['team_2_id'] ?? null,
+                'winner_team_id' => null,
+                'match_date' => now(), // Дата по умолчанию
+            ]);
+
+            // Добавляем ID созданного матча в массив
+            $matches[] = [
+                'match_id' => $match->id,  // Сохраняем ID созданного матча
+                'team_1_id' => $match->team_1_id,
+                'team_2_id' => $match->team_2_id,
+            ];
+        }
+
+        Log::info('Создание новой стадии:', request()->all());
+
+        // Возвращаем ID матчей в ответе
+        return response()->json([
+            'message' => 'Новая стадия успешно создана.',
+            'stage_id' => $request->stage_id,
+            'matches' => $matches,  // Передаем матчи с их ID
+        ], 201);
+    }
+
     public function updateTournamentStatus(Request $request, $tournamentId)
     {
         $validated = $request->validate([

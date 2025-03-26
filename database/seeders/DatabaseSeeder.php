@@ -42,5 +42,6 @@ class DatabaseSeeder extends Seeder
         $this->call(GameMatchSeeder::class);
         // Создание турнирной сетки
         $this->call(TournamentsBasketSeeder::class);
+        $this->call(TeamUserSeeder::class);
     }
 }

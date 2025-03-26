@@ -22,7 +22,31 @@ class TeamController extends Controller
         $team = Team::findOrFail($id);
         return response()->json($team);
     }
+    public function getTeamMembers($teamId)
+    {
+        $team = Team::with('users')->findOrFail($teamId);
 
+        return response()->json([
+            'team' => $team->name,
+            'members' => $team->users->map(fn($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]),
+        ]);
+    }
+    public function getUserTeams($userId)
+    {
+        $user = User::with('teams')->findOrFail($userId);
+
+        return response()->json([
+            'user' => $user->name,
+            'teams' => $user->teams->map(fn($team) => [
+                'id' => $team->id,
+                'name' => $team->name,
+            ]),
+        ]);
+    }
     // Создание новой команды
     public function store(Request $request)
     {

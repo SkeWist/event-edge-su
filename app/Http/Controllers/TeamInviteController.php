@@ -9,6 +9,7 @@ use App\Notifications\TeamInviteNotification;
 use App\Notifications\TeamInviteResponseNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class TeamInviteController extends Controller
 {
@@ -79,6 +80,16 @@ class TeamInviteController extends Controller
 
         // Находим пользователя, которому отправлено приглашение
         $user = User::find($invite->user_id);
+
+        // Если приглашение принято, добавляем пользователя в команду
+        if ($validated['response'] == 'accepted') {
+            DB::table('team_user')->insert([
+                'team_id' => $invite->team_id,
+                'user_id' => $invite->user_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         // Отправляем уведомление о принятии или отклонении приглашения
         $message = $validated['response'] == 'accepted' ? 'Вы приняли приглашение в команду.' : 'Вы отклонили приглашение в команду.';

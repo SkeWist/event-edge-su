@@ -22,7 +22,10 @@ class Team extends Model
     {
         return $this->belongsTo(User::class, 'captain_id'); // Связь с пользователем (капитаном)
     }
-
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'team_user');
+    }
     /**
      * Связь с участниками команды (Many-to-Many).
      */

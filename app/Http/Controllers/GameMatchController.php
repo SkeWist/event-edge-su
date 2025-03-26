@@ -10,44 +10,40 @@ use Illuminate\Support\Facades\Validator;
 
 class GameMatchController extends Controller
 {
-    /**
-     * Просмотр всех матчей.
-     */
     public function index()
-    {
-        $matches = GameMatch::with(['game', 'team1', 'team2', 'stage'])->get()
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+{
+    $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->get()
+        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
-        $matches->each(function ($match) {
-            $match->game_name = $match->game->name ?? 'Неизвестная игра';
-            $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';
-            $match->team_2_name = $match->team2->name ?? 'Неизвестная команда';
-            $match->stage_name = $match->stage->name ?? 'Этап не указан';
-
-            unset($match->game, $match->team1, $match->team2, $match->stage);
-        });
-
-        return response()->json($matches);
-    }
-
-    /**
-     * Просмотр матча по id.
-     */
-    public function show($id)
-    {
-        $match = GameMatch::with(['game', 'team1', 'team2', 'stage'])->findOrFail($id)
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
-
+    $matches->each(function ($match) {
         $match->game_name = $match->game->name ?? 'Неизвестная игра';
-        $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';
-        $match->team_2_name = $match->team2->name ?? 'Неизвестная команда';
+        $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
+        $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
         $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-        unset($match->game, $match->team1, $match->team2, $match->stage);
+        unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
+    });
 
-        return response()->json($match);
-    }
+    return response()->json($matches);
+}
 
+/**
+ * Просмотр матча по id.
+ */
+public function show($id)
+{
+    $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
+        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+
+    $match->game_name = $match->game->name ?? 'Неизвестная игра';
+    $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
+    $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
+    $match->stage_name = $match->stage->name ?? 'Этап не указан';
+
+    unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
+
+    return response()->json($match);
+}
     /**
      * Создание нового матча.
      */

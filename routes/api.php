@@ -45,6 +45,8 @@ Route::prefix('guest')->group(function () {
     Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
     Route::get('/statistics', [TournamentController::class, 'getStatistics']);
     Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
+    Route::get('/teams/{id}/members', [TeamController::class, 'getTeamMembers']);
+    Route::get('/users/{id}/teams', [TeamController::class, 'getUserTeams']);
 });
 
 //Пользовательский функционал
