@@ -11,7 +11,6 @@ use App\Models\TournamentBasket;
 use App\Models\User;
 use App\Models\Game;
 use App\Models\Stage;
-use App\Notifications\TournamentStatusNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -320,7 +319,6 @@ class TournamentController extends Controller
             'message' => 'Матч успешно добавлен в турнирную сетку!',
         ]);
     }
-
     // Метод для обновления результата матча и определения победителя
     public function updateMatchResult(Request $request, $tournamentId, $matchId)
     {
@@ -459,55 +457,99 @@ class TournamentController extends Controller
     }
     public function createStage(Request $request)
     {
-        // Валидация входных данных
         $validator = Validator::make($request->all(), [
             'tournament_id' => 'required|exists:tournaments,id',
             'stage_id' => 'required|integer|min:1',
             'matches' => 'required|array|min:1',
             'matches.*.team_1_id' => 'nullable|exists:teams,id',
             'matches.*.team_2_id' => 'nullable|exists:teams,id',
+            'matches.*.winner_team_id' => 'nullable|exists:teams,id', // Обработка победителя, если есть
         ]);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 422);
         }
 
-        // Проверяем существование турнира
+        // Получаем турнир
         $tournament = Tournament::find($request->tournament_id);
         if (!$tournament) {
             return response()->json(['error' => 'Турнир не найден.'], 404);
         }
 
-        // Создаем матчи для новой стадии
-        $matches = [];
-        foreach ($request->matches as $matchData) {
-            $match = GameMatch::create([
-                'tournament_id' => $request->tournament_id,
-                'stage_id' => $request->stage_id,
-                'team_1_id' => $matchData['team_1_id'] ?? null,
-                'team_2_id' => $matchData['team_2_id'] ?? null,
-                'winner_team_id' => null,
-                'match_date' => now(), // Дата по умолчанию
-            ]);
+        // Обновляем stage_id турнира
+        $newStageId = $request->stage_id + 1;
+        $tournament->stage_id = $newStageId;
 
-            // Добавляем ID созданного матча в массив
-            $matches[] = [
-                'match_id' => $match->id,  // Сохраняем ID созданного матча
-                'team_1_id' => $match->team_1_id,
-                'team_2_id' => $match->team_2_id,
-            ];
+        // Если стадия 4 → турнир завершен
+        if ($newStageId >= 4) {
+            $tournament->status = 'completed';
         }
 
-        Log::info('Создание новой стадии:', request()->all());
+        $tournament->save(); // Сохраняем обновление
 
-        // Возвращаем ID матчей в ответе
-        return response()->json([
-            'message' => 'Новая стадия успешно создана.',
+        // Получаем победителей предыдущей стадии (если есть)
+        $previousWinners = collect($request->matches)
+            ->pluck('winner_team_id')
+            ->filter()
+            ->values();
+
+        \Log::info('Создание новой стадии', [
+            'tournament_id' => $request->tournament_id,
             'stage_id' => $request->stage_id,
-            'matches' => $matches,  // Передаем матчи с их ID
-        ], 201);
-    }
+            'matches' => $request->matches,
+            'previousWinners' => $previousWinners->toArray(),
+        ]);
 
+        // Если предыдущие победители есть, но их меньше двух — возвращаем ошибку
+        if ($previousWinners->count() < 2 && !$request->matches) {
+            return response()->json(['error' => 'Недостаточно команд для следующей стадии.'], 400);
+        }
+
+        // Если предыдущих победителей нет, значит, это первая стадия
+        $matches = [];
+        if ($previousWinners->count() > 0) {
+            // Создаем матчи из победителей предыдущей стадии
+            for ($i = 0; $i < count($previousWinners); $i += 2) {
+                $match = GameMatch::create([
+                    'tournament_id' => $request->tournament_id,
+                    'stage_id' => $newStageId,
+                    'team_1_id' => $previousWinners[$i],
+                    'team_2_id' => $previousWinners[$i + 1] ?? null,
+                    'winner_team_id' => null,
+                    'match_date' => now(),
+                ]);
+
+                // Добавляем id созданного матча в массив
+                $matches[] = [
+                    'game_match_id' => $match->id, // game_match_id
+                    'team_1_id' => $match->team_1_id,
+                    'team_2_id' => $match->team_2_id,
+                ];
+            }
+        } else {
+            // Создаем новые матчи на основе данных из запроса
+            foreach ($request->matches as $matchData) {
+                // Для каждого матча из запроса создаем новый матч
+                $match = GameMatch::create([
+                    'tournament_id' => $request->tournament_id,
+                    'stage_id' => $newStageId,
+                    'team_1_id' => $matchData['team_1_id'],
+                    'team_2_id' => $matchData['team_2_id'],
+                    'winner_team_id' => $matchData['winner_team_id'] ?? null, // Если победитель указан, передаем его
+                    'match_date' => now(),
+                ]);
+
+                // Добавляем id созданного матча в массив
+                $matches[] = [
+                    'game_match_id' => $match->id, // game_match_id
+                    'team_1_id' => $match->team_1_id,
+                    'team_2_id' => $match->team_2_id,
+                ];
+            }
+        }
+
+        return response()->json(['message' => 'Стадия создана', 'matches' => $matches], 201);
+    }
     public function updateTournamentStatus(Request $request, $tournamentId)
     {
         $validated = $request->validate([

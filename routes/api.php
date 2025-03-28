@@ -8,6 +8,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\StageTypeController;
+use App\Http\Controllers\StatController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
@@ -202,4 +203,16 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::delete('/tournaments/{tournamentId}/matches/{matchId}', [TournamentController::class, 'removeMatchFromTournament']);
     // Роут для отправки уведомлений (Обновление статуса турнира)
     Route::post('/tournaments/{tournamentId}/status', [TournamentController::class, 'updateTournamentStatus']);
+    // Роут для обновления турнирной сетки
+    Route::post('/basket/update', [TournamentController::class, 'updateBasketResults']);
+    // Роут для создания стадии
+    Route::post('/basket/create-stage', [TournamentController::class, 'createStage']);
+    // Роут для просмотра статистики
+    Route::get('/stats/overview', [StatController::class, 'overview']);
+    // Статистика по пользователям
+    Route::get('/stats/users', [StatController::class, 'userStats']);
+    // Статистика по турнирам
+    Route::get('/stats/tournaments', [StatController::class, 'tournamentStats']);
+    // Роут для добавления матча в турнир
+    Route::post('/tournaments/add-match', [TournamentController::class, 'addMatchToTournament']);
 });
