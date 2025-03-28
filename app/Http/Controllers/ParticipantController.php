@@ -6,6 +6,7 @@ use App\Models\Participant;
 use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ParticipantController extends Controller
@@ -122,44 +123,53 @@ class ParticipantController extends Controller
             return response()->json(['error' => 'Пользователь не найден или токен недействителен.'], 401);
         }
 
-        // Получаем участие пользователя в турнире
-        $participant = Participant::where('user_id', $user->id)->first();
+        // Получаем текущую команду пользователя
+        $currentTeam = $user->teams()->wherePivot('status', 'active')->first();
 
-        // Если у пользователя нет команды, ставим значение null для команды
-        $team = $participant ? $participant->team : null;
+        // Получаем список участников текущей команды
+        $teamMembers = $currentTeam ? DB::table('users')
+            ->select('users.id', 'users.name', 'users.email')
+            ->join('team_user', 'users.id', '=', 'team_user.user_id')
+            ->where('team_user.team_id', $currentTeam->id)
+            ->get() : collect();
 
-        // Получаем турниры, в которых участвовала команда, если она есть
-        $tournaments = $team ? Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);
-        })->get() : collect(); // Если нет команды, возвращаем пустую коллекцию
+        // Получаем прошлые команды, в которых был пользователь
+        $pastTeams = DB::table('teams')
+            ->select('teams.id', 'teams.name')
+            ->join('team_user', 'teams.id', '=', 'team_user.team_id')
+            ->where('team_user.user_id', $user->id)
+            ->where('team_user.status', 'left')
+            ->get();
 
-        // Получаем текущий турнир, в котором участвует команда, если она есть
-        $currentTournament = $team ? Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);
-        })->whereNull('end_date')->first() : null;
+        // Получаем турниры, в которых участвовала текущая команда
+        $tournaments = $currentTeam ? DB::table('tournaments')
+            ->select('tournaments.id', 'tournaments.name', 'tournaments.start_date', 'tournaments.end_date')
+            ->join('tournament_teams', 'tournaments.id', '=', 'tournament_teams.tournament_id')
+            ->where('tournament_teams.team_id', $currentTeam->id)
+            ->get() : collect();
+
+        // Получаем текущий турнир, в котором участвует команда
+        $currentTournament = $currentTeam ? DB::table('tournaments')
+            ->select('tournaments.id', 'tournaments.name', 'tournaments.start_date', 'tournaments.end_date')
+            ->join('tournament_teams', 'tournaments.id', '=', 'tournament_teams.tournament_id')
+            ->where('tournament_teams.team_id', $currentTeam->id)
+            ->whereNull('tournaments.end_date')
+            ->first() : null;
 
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'team' => $team ? $team->name : 'Команда не присоединена', // Если нет команды, показываем это
-                'token' => $user->api_token, // Возвращаем токен пользователя
+                'team' => $currentTeam ? [
+                    'id' => $currentTeam->id,
+                    'name' => $currentTeam->name,
+                    'members' => $teamMembers,
+                ] : 'Команда не присоединена',
             ],
-            'tournaments' => $tournaments->map(function ($tournament) {
-                return [
-                    'id' => $tournament->id,
-                    'name' => $tournament->name,
-                    'start_date' => $tournament->start_date,
-                    'end_date' => $tournament->end_date,
-                ];
-            }),
-            'current_tournament' => $currentTournament ? [
-                'id' => $currentTournament->id,
-                'name' => $currentTournament->name,
-                'start_date' => $currentTournament->start_date,
-                'end_date' => $currentTournament->end_date,
-            ] : null,
+            'past_teams' => $pastTeams,
+            'tournaments' => $tournaments,
+            'current_tournament' => $currentTournament,
         ]);
     }
     // Удаление участника турнира

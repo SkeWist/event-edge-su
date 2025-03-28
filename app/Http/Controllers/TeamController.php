@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class TeamController extends Controller
@@ -98,7 +99,30 @@ class TeamController extends Controller
             'team' => $team
         ]);
     }
+    public function leaveTeam(Request $request)
+    {
+        // Получаем текущего пользователя
+        $user = auth()->user();
 
+        if (!$user) {
+            return response()->json(['error' => 'Пользователь не найден.'], 401);
+        }
+
+        // Проверяем, есть ли активная команда
+        $currentTeam = $user->teams()->wherePivot('status', 'active')->first();
+
+        if (!$currentTeam) {
+            return response()->json(['error' => 'Вы не состоите в команде.'], 400);
+        }
+
+        // Обновляем статус в team_user
+        DB::table('team_user')
+            ->where('user_id', $user->id)
+            ->where('team_id', $currentTeam->id)
+            ->update(['status' => 'left']);
+
+        return response()->json(['message' => 'Вы успешно вышли из команды.']);
+    }
     // Удаление команды
     public function destroy($id)
     {

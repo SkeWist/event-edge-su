@@ -83,9 +83,11 @@ class TeamInviteController extends Controller
 
         // Если приглашение принято, добавляем пользователя в команду
         if ($validated['response'] == 'accepted') {
+            // Вставляем нового пользователя в таблицу team_user
             DB::table('team_user')->insert([
                 'team_id' => $invite->team_id,
                 'user_id' => $invite->user_id,
+                'status' => 'active',  // Статус "active", если приглашение принято
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

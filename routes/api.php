@@ -47,6 +47,7 @@ Route::prefix('guest')->group(function () {
     Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
     Route::get('/teams/{id}/members', [TeamController::class, 'getTeamMembers']);
     Route::get('/users/{id}/teams', [TeamController::class, 'getUserTeams']);
+    Route::middleware('auth:sanctum')->post('/leave-team', [TeamController::class, 'leaveTeam']);
 });
 
 //Пользовательский функционал
