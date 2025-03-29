@@ -68,50 +68,53 @@ class ParticipantController extends Controller
         // Находим пользователя
         $user = User::findOrFail($userId);
 
-        // Получаем участие пользователя в турнире
-        $participant = Participant::where('user_id', $userId)->first();
+        // Получаем текущую команду пользователя
+        $currentTeam = $user->teams()->wherePivot('status', 'active')->first();
 
-        if (!$participant || !$participant->team) {
-            return response()->json([
-                'error' => 'У пользователя нет команды.',
-            ], 404);
-        }
+        // Получаем список участников текущей команды
+        $teamMembers = $currentTeam ? DB::table('users')
+            ->select('users.id', 'users.name', 'users.email')
+            ->join('team_user', 'users.id', '=', 'team_user.user_id')
+            ->where('team_user.team_id', $currentTeam->id)
+            ->get() : collect();
 
-        // Получаем команду пользователя
-        $team = $participant->team;
+        // Получаем прошлые команды, в которых был пользователь
+        $pastTeams = DB::table('teams')
+            ->select('teams.id', 'teams.name')
+            ->join('team_user', 'teams.id', '=', 'team_user.team_id')
+            ->where('team_user.user_id', $user->id)
+            ->where('team_user.status', 'left')
+            ->get();
 
-        // Получаем турниры, в которых участвовала команда
-        $tournaments = Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);
-        })->get();
+        // Получаем турниры, в которых участвовала текущая команда
+        $tournaments = $currentTeam ? DB::table('tournaments')
+            ->select('tournaments.id', 'tournaments.name', 'tournaments.start_date', 'tournaments.end_date')
+            ->join('tournament_teams', 'tournaments.id', '=', 'tournament_teams.tournament_id')
+            ->where('tournament_teams.team_id', $currentTeam->id)
+            ->get() : collect();
 
         // Получаем текущий турнир, в котором участвует команда
-        $currentTournament = Tournament::whereHas('teams', function ($query) use ($team) {
-            $query->where('teams.id', $team->id);
-        })->whereNull('end_date')->first();
+        $currentTournament = $currentTeam ? DB::table('tournaments')
+            ->select('tournaments.id', 'tournaments.name', 'tournaments.start_date', 'tournaments.end_date')
+            ->join('tournament_teams', 'tournaments.id', '=', 'tournament_teams.tournament_id')
+            ->where('tournament_teams.team_id', $currentTeam->id)
+            ->whereNull('tournaments.end_date')
+            ->first() : null;
 
         return response()->json([
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'team' => $team ? $team->name : null,
-                'token' => $user->api_token, // Добавляем токен пользователя
+                'team' => $currentTeam ? [
+                    'id' => $currentTeam->id,
+                    'name' => $currentTeam->name,
+                    'members' => $teamMembers,
+                ] : 'Команда не присоединена',
             ],
-            'tournaments' => $tournaments->map(function ($tournament) {
-                return [
-                    'id' => $tournament->id,
-                    'name' => $tournament->name,
-                    'start_date' => $tournament->start_date,
-                    'end_date' => $tournament->end_date,
-                ];
-            }),
-            'current_tournament' => $currentTournament ? [
-                'id' => $currentTournament->id,
-                'name' => $currentTournament->name,
-                'start_date' => $currentTournament->start_date,
-                'end_date' => $currentTournament->end_date,
-            ] : null,
+            'past_teams' => $pastTeams,
+            'tournaments' => $tournaments,
+            'current_tournament' => $currentTournament,
         ]);
     }
     public function myProfile(Request $request)

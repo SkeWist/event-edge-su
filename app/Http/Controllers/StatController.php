@@ -31,18 +31,6 @@ class StatController extends Controller
         ]);
     }
 
-    // Статистика по пользователям
-    public function userStats()
-    {
-        return response()->json([
-            'total_users' => User::count(),
-            'new_users_this_week' => User::whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])->count(),
-            'top_users' => User::withCount('tournaments')
-                ->orderByDesc('tournaments_count')
-                ->take(5)
-                ->get(),
-        ]);
-    }
     // Статистика по турнирам
     public function tournamentStats()
     {

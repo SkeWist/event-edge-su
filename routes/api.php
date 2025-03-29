@@ -209,8 +209,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::post('/basket/create-stage', [TournamentController::class, 'createStage']);
     // Роут для просмотра статистики
     Route::get('/stats/overview', [StatController::class, 'overview']);
-    // Статистика по пользователям
-    Route::get('/stats/users', [StatController::class, 'userStats']);
     // Статистика по турнирам
     Route::get('/stats/tournaments', [StatController::class, 'tournamentStats']);
     // Роут для добавления матча в турнир
