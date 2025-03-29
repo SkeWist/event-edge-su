@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users');
             $table->string('message')->nullable();
+            $table->enum('status', ['unread', 'read'])->default('unread');
             $table->timestamps();
         });
     }

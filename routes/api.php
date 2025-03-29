@@ -186,16 +186,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     // Удаление приглашения
     Route::delete('team-invites/{inviteId}', [TeamInviteController::class, 'destroy'])->middleware('auth');
     // Получение всех уведомлений для текущего пользователя
-    Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
-    // Создание нового уведомления
-    Route::post('notifications', [NotificationController::class, 'store'])->middleware('auth');
-    // Просмотр уведомления по ID
-    Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
-    // Обновление уведомления
-    Route::put('notifications/{id}', [NotificationController::class, 'update'])->middleware('auth');
-    // Удаление уведомления
-    Route::delete('notifications/{id}', [NotificationController::class, 'destroy'])->middleware('auth');
-    // Роут для добавления матча в турнир
     Route::post('/tournaments/add-match', [TournamentController::class, 'addMatchToTournament']);
     // Роут для обновления результата матча
     Route::post('/tournaments/{tournamentId}/matches/{matchId}/update-result', [TournamentController::class, 'updateMatchResult']);
