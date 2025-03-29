@@ -14,7 +14,6 @@ class NotificationController extends Controller
         if (!$user) {
             return response()->json(['error' => 'Не авторизован'], 401);
         }
-
         // Получаем уведомления пользователя (без статуса)
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
