@@ -46,10 +46,18 @@ Route::prefix('guest')->group(function () {
     Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
     Route::get('/statistics', [TournamentController::class, 'getStatistics']);
     Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
+    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration', [NotificationController::class, 'notifyTournamentRegistrationOpen']);
     Route::middleware('auth:api')->get('/notifications/unread', [NotificationController::class, 'getUnreadNotifications']);
     Route::get('/teams/{id}/members', [TeamController::class, 'getTeamMembers']);
     Route::get('/users/{id}/teams', [TeamController::class, 'getUserTeams']);
     Route::middleware('auth:sanctum')->post('/leave-team', [TeamController::class, 'leaveTeam']);
+    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-start', [NotificationController::class, 'notifyTournamentStart']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-reschedule', [NotificationController::class, 'notifyMatchReschedule']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-result', [NotificationController::class, 'notifyMatchResult']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-next-stage', [NotificationController::class, 'notifyNextStage']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-team-elimination', [NotificationController::class, 'notifyTeamElimination']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-team-registration', [NotificationController::class, 'notifyTournamentRegistration']);
+    Route::middleware( 'auth:api')->post('/match/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
 });
 
 //Пользовательский функционал
@@ -96,6 +104,7 @@ Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function ()
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::post('/tournaments/create', [TournamentController::class, 'store']);
+    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
 });
 
 //Админский функционал
