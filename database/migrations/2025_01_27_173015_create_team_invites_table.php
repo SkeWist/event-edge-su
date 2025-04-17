@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('team_invites', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('team_id')->constrained('teams');
-            $table->foreignId('user_id')->constrained('users');
+            $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('status')->default('pending'); // accepted, rejected, pending
+            $table->text('message')->nullable();
             $table->timestamp('expires_at');
-            $table->enum('status', ['pending', 'accepted', 'rejected'])->default('pending');
             $table->timestamps();
         });
     }
