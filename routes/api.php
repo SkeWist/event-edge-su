@@ -25,7 +25,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 Route::post('/profile/update', [UserController::class, 'updateProfile']);
-
+Route::get('/my-matches', [GameMatchController::class, 'myMatches'])->middleware('auth:api');
 // Открытые маршруты (без аутентификации)
 Route::prefix('guest')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);

@@ -132,10 +132,6 @@ public function show($id)
         'match' => $match->makeHidden('id'),
     ]);
 }
-
-    /**
-     * Удаление матча.
-     */
     public function destroy($id)
     {
         $match = GameMatch::findOrFail($id);
@@ -143,6 +139,56 @@ public function show($id)
 
         return response()->json([
             'message' => 'Матч успешно удалён!',
+        ]);
+    }
+    public function myMatches(Request $request)
+    {
+        $user = auth()->user();
+        $now = Carbon::now();
+
+        // Получаем все ID команд пользователя через связь many-to-many
+        $teamIds = $user->teams()->pluck('teams.id');
+
+        if ($teamIds->isEmpty()) {
+            return response()->json(['error' => 'У вас нет привязанных команд.'], 404);
+        }
+
+        // Базовый запрос: все матчи, где участвует хотя бы одна из команд пользователя
+        $matchesQuery = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])
+            ->where(function ($query) use ($teamIds) {
+                $query->whereIn('team_1_id', $teamIds)
+                    ->orWhereIn('team_2_id', $teamIds);
+            });
+
+        // Разделяем на прошлые и будущие
+        $pastMatches = (clone $matchesQuery)
+            ->where('match_date', '<', $now)
+            ->orderBy('match_date', 'desc')
+            ->get();
+
+        $upcomingMatches = (clone $matchesQuery)
+            ->where('match_date', '>=', $now)
+            ->orderBy('match_date', 'asc')
+            ->get();
+
+        // Обработка
+        $formatMatches = function ($matches) {
+            return $matches->map(function ($match) {
+                $match->game_name = $match->game->name ?? 'Неизвестная игра';
+                $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+                $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+                $match->stage_name = $match->stage->name ?? 'Этап не указан';
+
+                return $match->makeHidden([
+                    'game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at',
+                    'game', 'teamA', 'teamB', 'stage'
+                ]);
+            });
+        };
+
+        return response()->json([
+            'past_matches' => $formatMatches($pastMatches),
+            'upcoming_matches' => $formatMatches($upcomingMatches),
         ]);
     }
 }
