@@ -209,4 +209,9 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::get('/stats/tournaments', [StatController::class, 'tournamentStats']);
     // Роут для добавления матча в турнир
     Route::post('/tournaments/add-match', [TournamentController::class, 'addMatchToTournament']);
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users/create', [UserController::class, 'store']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::post('/users/update/{id}', [UserController::class, 'update']);
+    Route::delete('/users/delete/{id}', [UserController::class, 'destroy']);
 });
