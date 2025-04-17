@@ -34,8 +34,6 @@ class DatabaseSeeder extends Seeder
         $this->call(StageSeeder::class);
         // Создание турнира
         $this->call(TournamentsTableSeeder::class);
-        // Создание участников
-        $this->call(ParticipantSeeder::class);
         // Создание новостей
         $this->call(NewsFeedSeeder::class);
         // Создание игровых матчей
