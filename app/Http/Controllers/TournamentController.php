@@ -11,6 +11,7 @@ use App\Models\TournamentBasket;
 use App\Models\User;
 use App\Models\Game;
 use App\Models\Stage;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -64,12 +65,12 @@ class TournamentController extends Controller
     {
         // Валидация данных
         $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'game_id' => 'nullable|exists:games,id',
-            'stage_id' => 'nullable|exists:stages,id',
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'game_id' => 'required|exists:games,id',
+            'stage_id' => 'required|exists:stages,id',
             'status' => 'nullable|in:pending,ongoing,completed',
             'teams' => 'nullable|array|max:10',
             'teams.*' => 'exists:teams,id',
@@ -238,13 +239,13 @@ class TournamentController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'user_id' => 'nullable|exists:users,id',
-            'game_id' => 'nullable|exists:games,id',
-            'stage_id' => 'nullable|exists:stages,id',
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'user_id' => 'required|exists:users,id',
+            'game_id' => 'required|exists:games,id',
+            'stage_id' => 'required|exists:stages,id',
             'status' => 'nullable|string|in:upcoming,ongoing,completed',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
@@ -591,4 +592,36 @@ class TournamentController extends Controller
 
         return response()->json(['message' => 'Турнир удален']);
     }
+    public function myTournaments(Request $request)
+    {
+        $user = auth()->user();
+
+        // Только для админа и организатора
+        if (!in_array($user->role_id, [1, 3])) {
+            return response()->json(['error' => 'Доступ запрещён. Только для организаторов и админов.'], 403);
+        }
+
+        $now = Carbon::now();
+
+        // Получаем турниры, созданные пользователем
+        $tournamentsQuery = Tournament::where('user_id', $user->id);
+
+        // Прошедшие турниры
+        $pastTournaments = (clone $tournamentsQuery)
+            ->where('end_date', '<', $now)
+            ->orderBy('end_date', 'desc')
+            ->get();
+
+        // Активные или будущие турниры
+        $upcomingTournaments = (clone $tournamentsQuery)
+            ->where('end_date', '>=', $now)
+            ->orderBy('start_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'past_tournaments' => $pastTournaments,
+            'upcoming_tournaments' => $upcomingTournaments,
+        ]);
+    }
+
 }

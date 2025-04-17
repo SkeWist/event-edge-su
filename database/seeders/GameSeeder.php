@@ -62,6 +62,13 @@ class GameSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Другая игра',
+                'logo' => '',
+                'description' => '',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }
