@@ -36,9 +36,9 @@ class GameMatch extends Model
     {
         return $this->belongsTo(Team::class, 'winner_team_id');
     }
-    public function participants()
+    public function tournament()
     {
-        return $this->belongsToMany(Participant::class, 'match_participant', 'game_match_id', 'participant_id');
+        return $this->belongsTo(Tournament::class);
     }
     public function winnerTeam()
     {

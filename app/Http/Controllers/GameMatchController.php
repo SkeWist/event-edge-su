@@ -12,11 +12,11 @@ class GameMatchController extends Controller
 {
     public function index()
 {
-    $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->get()
-        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+    $matches = GameMatch::with(['tournament.game', 'teamA', 'teamB', 'stage'])->get()
+        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at', 'tournament']);
 
     $matches->each(function ($match) {
-        $match->game_name = $match->game->name ?? 'Неизвестная игра';
+        $match->game_name = $match->tournament->game->name ?? 'Неизвестная игра';
         $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
         $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
         $match->stage_name = $match->stage->name ?? 'Этап не указан';
@@ -30,20 +30,29 @@ class GameMatchController extends Controller
 /**
  * Просмотр матча по id.
  */
-public function show($id)
-{
-    $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
-        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+    public function show($id)
+    {
+        $match = GameMatch::with(['tournament.game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
+            ->makeHidden([
+                'tournament_id',
+                'team_1_id',
+                'team_2_id',
+                'created_at',
+                'updated_at',
+                'tournament', // Скрываем сам объект
+            ]);
 
-    $match->game_name = $match->game->name ?? 'Неизвестная игра';
-    $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
-    $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
-    $match->stage_name = $match->stage->name ?? 'Этап не указан';
+        // Добавляем нужные поля
+        $match->game_name = $match->tournament->game->name ?? 'Неизвестная игра';
+        $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+        $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+        $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-    unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
+        // Удаляем ненужные вложенные объекты
+        unset($match->tournament, $match->teamA, $match->teamB, $match->stage);
 
-    return response()->json($match);
-}
+        return response()->json($match);
+    }
     /**
      * Создание нового матча.
      */
