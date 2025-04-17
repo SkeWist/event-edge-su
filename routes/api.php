@@ -5,6 +5,7 @@ use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameMatchController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\StageTypeController;
 use App\Http\Controllers\StatController;
