@@ -22,7 +22,7 @@ class UserController extends Controller
 
         // Если валидация не прошла
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
         // Получаем текущего пользователя

@@ -64,14 +64,14 @@ class TournamentController extends Controller
     {
         // Валидация данных
         $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'start_date' => 'nullable|date',
+            'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
-            'game_id' => 'nullable|exists:games,id',
+            'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|in:pending,ongoing,completed',
-            'teams' => 'nullable|array|max:10',
+            'status' => 'required|in:pending,ongoing,completed',
+            'teams' => 'nullable|array',
             'teams.*' => 'exists:teams,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
@@ -87,6 +87,7 @@ class TournamentController extends Controller
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
+
             if ($file->isValid()) {
                 $imagePath = $file->store('tournament_images', 'public');
                 Log::info('Файл успешно загружен', ['path' => $imagePath]);

@@ -41,7 +41,7 @@ return [
             'provider' => 'users',
         ],
         'api' => [
-            'driver' => 'sanctum',
+            'driver' => 'sanctum', // Или 'sanctum' если используешь Sanctum
             'provider' => 'users',
         ],
     ],

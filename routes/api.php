@@ -8,7 +8,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\StageTypeController;
-use App\Http\Controllers\StatController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
