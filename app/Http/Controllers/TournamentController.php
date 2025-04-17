@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Game;
 use App\Models\Stage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -591,5 +592,36 @@ class TournamentController extends Controller
         $tournament->delete();
 
         return response()->json(['message' => 'Турнир удален']);
+    }
+    public function myTournaments(Request $request)
+    {
+        $user = auth()->user();
+
+        // Только для админа и организатора
+        if (!in_array($user->role_id, [1, 3])) {
+            return response()->json(['error' => 'Доступ запрещён. Только для организаторов и админов.'], 403);
+        }
+
+        $now = Carbon::now();
+
+        // Получаем турниры, созданные пользователем
+        $tournamentsQuery = Tournament::where('user_id', $user->id);
+
+        // Прошедшие турниры
+        $pastTournaments = (clone $tournamentsQuery)
+            ->where('end_date', '<', $now)
+            ->orderBy('end_date', 'desc')
+            ->get();
+
+        // Активные или будущие турниры
+        $upcomingTournaments = (clone $tournamentsQuery)
+            ->where('end_date', '>=', $now)
+            ->orderBy('start_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'past_tournaments' => $pastTournaments,
+            'upcoming_tournaments' => $upcomingTournaments,
+        ]);
     }
 }

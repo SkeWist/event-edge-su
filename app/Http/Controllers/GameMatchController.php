@@ -34,19 +34,19 @@ class GameMatchController extends Controller
      * Просмотр матча по id.
      */
     public function show($id)
-    {
-        $match = GameMatch::with(['game', 'team1', 'team2', 'stage'])->findOrFail($id)
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+{
+    $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
+        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
-        $match->game_name = $match->game->name ?? 'Неизвестная игра';
-        $match->team_1_name = $match->team1->name ?? 'Неизвестная команда';
-        $match->team_2_name = $match->team2->name ?? 'Неизвестная команда';
-        $match->stage_name = $match->stage->name ?? 'Этап не указан';
+    $match->game_name = $match->game->name ?? 'Неизвестная игра';
+    $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
+    $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
+    $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-        unset($match->game, $match->team1, $match->team2, $match->stage);
+    unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
 
-        return response()->json($match);
-    }
+    return response()->json($match);
+}
 
     /**
      * Создание нового матча.
@@ -158,7 +158,7 @@ class GameMatchController extends Controller
         }
 
         // Базовый запрос: все матчи, где участвует хотя бы одна из команд пользователя
-        $matchesQuery = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])
+        $matchesQuery = GameMatch::with(['game', 'teamA', 'teamB', 'stage','winnerTeam'])
             ->where(function ($query) use ($teamIds) {
                 $query->whereIn('team_1_id', $teamIds)
                     ->orWhereIn('team_2_id', $teamIds);
@@ -182,10 +182,11 @@ class GameMatchController extends Controller
                 $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
                 $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
                 $match->stage_name = $match->stage->name ?? 'Этап не указан';
-
+                $match->winner_team_name = $match->winnerTeam->name ?? null;
                 return $match->makeHidden([
-                    'game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at',
-                    'game', 'teamA', 'teamB', 'stage'
+                    'game_id', 'team_1_id', 'team_2_id', 'winner_team_id',
+                    'created_at', 'updated_at',
+                    'game', 'teamA', 'teamB', 'stage', 'winnerTeam'
                 ]);
             });
         };

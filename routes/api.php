@@ -5,7 +5,6 @@ use App\Http\Controllers\GameController;
 use App\Http\Controllers\GameMatchController;
 use App\Http\Controllers\NewsFeedController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\StageTypeController;
 use App\Http\Controllers\StatController;
@@ -21,13 +20,16 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // Авторизация
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/update', [UserController::class, 'updateProfile']);
 });
+Route::get('/user/profile/{userId}', [UserController::class, 'profile']);
+Route::middleware('auth:api')->get('user/my-profile', [UserController::class, 'myProfile']);
 Route::get('/my-matches', [GameMatchController::class, 'myMatches'])->middleware('auth:api');
+Route::get('/my-tournaments', [TournamentController::class, 'myTournaments'])->middleware('auth:api');
 // Открытые маршруты (без аутентификации)
 Route::prefix('guest')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);
@@ -44,8 +46,6 @@ Route::prefix('guest')->group(function () {
     Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/stage-type', [StageTypeController::class, 'index']);
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
-    Route::get('/participants/profile/{userId}', [ParticipantController::class, 'profile']);
-    Route::middleware('auth:api')->get('participants/my-profile', [ParticipantController::class, 'myProfile']);
     Route::get('/tournaments/{id}/basket', [TournamentController::class, 'getTournamentBasket']);
     Route::get('/statistics', [TournamentController::class, 'getStatistics']);
     Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
@@ -135,11 +135,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     // Удаление команды
     Route::delete('/teams/delete/{id}', [TeamController::class, 'destroy']);
     // Создание участника
-    Route::post('/participants/create', [ParticipantController::class, 'store']);
-    // Редактирование участника
-    Route::post('/participants/update/{id}', [ParticipantController::class, 'update']);
-    // Удаление участника
-    Route::delete('/participants/delete/{id}', [ParticipantController::class, 'destroy']);
     // Список игровых матчей
     Route::get('game-matches', [GameMatchController::class, 'index']);
     // Просмотр игрового матча
