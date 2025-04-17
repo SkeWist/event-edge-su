@@ -16,7 +16,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . Auth::id(),
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Проверка, что аватар — это изображение
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:8192', // Проверка, что аватар — это изображение
             'password' => 'nullable|string|min:8|confirmed', // Обновление пароля (если передан)
         ]);
 
