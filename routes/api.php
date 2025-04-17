@@ -8,6 +8,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ParticipantController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\StageTypeController;
+use App\Http\Controllers\StatController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
@@ -23,7 +24,9 @@ Route::get('/user', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
-Route::post('/profile/update', [UserController::class, 'updateProfile']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/profile/update', [UserController::class, 'updateProfile']);
+});
 Route::get('/my-matches', [GameMatchController::class, 'myMatches'])->middleware('auth:api');
 // Открытые маршруты (без аутентификации)
 Route::prefix('guest')->group(function () {
@@ -84,7 +87,6 @@ Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
 });
 
 Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function () {
-    Route::post('/profile/update', [UserController::class, 'updateProfile']);
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
