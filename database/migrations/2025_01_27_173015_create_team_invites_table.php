@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users');
             $table->timestamp('expires_at');
             $table->enum('status', ['pending', 'accepted', 'rejected'])->default('pending');
+            $table->string('message')->nullable();
             $table->timestamps();
         });
     }

@@ -8,6 +8,7 @@ use App\Models\Stage;
 use App\Models\Team;
 use App\Models\Tournament;
 use App\Models\User;
+use App\Notifications\MatchResultNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -231,74 +232,60 @@ class NotificationController extends Controller
     }
     public function notifyMatchResult(Request $request, $matchId)
     {
-        // Валидация данных
+        // Валидация входящих данных
         $request->validate([
-            'winner_team_id' => 'required|exists:teams,id', // ID команды-победителя
-            'result' => 'required|string', // Счёт матча (например, "2:1")
+            'winner_team_id' => 'required|exists:teams,id',
+            'result' => 'required|string',
         ]);
 
-        // Находим матч
+        // Поиск матча
         $match = GameMatch::find($matchId);
 
         if (!$match) {
             return response()->json(['error' => 'Матч не найден'], 404);
         }
 
-        // Определяем команды в матче
-        $team1 = Team::find($match->team_1_id);
-        $team2 = Team::find($match->team_2_id);
+        // Обновляем данные матча
+        $match->update([
+            'winner_team_id' => $request->winner_team_id,
+            'result' => $request->result,
+        ]);
+
+        // Получаем команды
+        $team1 = $match->teamA;
+        $team2 = $match->teamA;
 
         if (!$team1 || !$team2) {
             return response()->json(['error' => 'У матча нет корректных команд'], 400);
         }
 
         // Определяем победителя и проигравшего
-        $winnerTeam = ($match->team_1_id == $request->team_winner_id) ? $team1 : $team2;
+        $winnerTeam = ($team1->id == $request->winner_team_id) ? $team1 : $team2;
         $loserTeam = ($winnerTeam->id == $team1->id) ? $team2 : $team1;
 
-        // Получаем всех участников обеих команд
-        $participants = DB::table('team_user')
-            ->whereIn('team_id', [$team1->id, $team2->id])
-            ->pluck('user_id')
-            ->unique();
+        // Получаем участников обеих команд
+        $participants = $team1->users->merge($team2->users)->unique();
 
-        if ($participants->isEmpty()) {
-            return response()->json(['error' => 'Нет участников для уведомления'], 400);
+        foreach ($participants as $user) {
+            $isWinner = $user->teams->contains($winnerTeam);
+
+            $message = $isWinner
+                ? "Вы победили команду {$loserTeam->name} со счётом {$request->result}!"
+                : "Вы проиграли команде {$winnerTeam->name} со счётом {$request->result}.";
+
+            // Отправляем уведомление через Laravel Notification (используя канал database)
+            $user->notify(new MatchResultNotification($message));
         }
-
-        // Формируем уведомления
-        $notifications = collect();
-
-        foreach ($participants as $userId) {
-            // Определяем, в какой команде находится пользователь
-            $userTeamId = DB::table('team_user')->where('user_id', $userId)->value('team_id');
-
-            // Определяем сообщение в зависимости от команды пользователя
-            if ($userTeamId == $winnerTeam->id) {
-                $message = "Вы победили команду {$loserTeam->name} со счётом {$request->result}!";
-            } else {
-                $message = "Вы проиграли команде {$winnerTeam->name} со счётом {$request->result}.";
-            }
-
-            $notifications->push([
-                'user_id' => $userId,
-                'message' => $message,
-                'status' => 'unread',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        // Сохраняем уведомления в БД
-        Notification::insert($notifications->toArray());
 
         return response()->json([
-            'message' => 'Уведомления о результате матча отправлены.',
+            'message' => 'Результат матча сохранён и уведомления отправлены.',
             'winner' => $winnerTeam->name,
             'loser' => $loserTeam->name,
             'result' => $request->result,
         ]);
     }
+
+
     public function notifyNextStage(Request $request, $tournamentId)
     {
         // Валидация данных

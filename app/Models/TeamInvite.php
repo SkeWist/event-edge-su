@@ -14,6 +14,7 @@ class TeamInvite extends Model
         'user_id',
         'expires_at',
         'status',
+        'message',
     ];
 
     public function team()

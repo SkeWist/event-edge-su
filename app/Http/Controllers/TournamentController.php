@@ -559,7 +559,7 @@ class TournamentController extends Controller
     public function updateTournamentStatus(Request $request, $tournamentId)
     {
         $validated = $request->validate([
-            'status' => 'required|in:upcoming,ongoing,canceled,completed',
+            'status' => 'required|in:pending,ongoing,completed,registrationOpen,registrationClose',
         ]);
 
         $tournament = Tournament::findOrFail($tournamentId);
@@ -567,7 +567,7 @@ class TournamentController extends Controller
 
         // Определяем текст уведомления
         $message = match ($validated['status']) {
-            'upcoming' => 'Турнир "' . $tournament->name . '" вот-вот начнётся!',
+            'pending' => 'Турнир "' . $tournament->name . '" вот-вот начнётся!',
             'ongoing' => 'Турнир "' . $tournament->name . '" начался!',
             'canceled' => 'Турнир "' . $tournament->name . '" был отменён.',
             'completed' => 'Турнир "' . $tournament->name . '" завершён!',
