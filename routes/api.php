@@ -11,6 +11,7 @@ use App\Http\Controllers\StatController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
+use App\Http\Controllers\TournamentRequestController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,11 @@ Route::get('/user/profile/{userId}', [UserController::class, 'profile']);
 Route::middleware('auth:api')->get('user/my-profile', [UserController::class, 'myProfile']);
 Route::get('/my-matches', [GameMatchController::class, 'myMatches'])->middleware('auth:api');
 Route::get('/my-tournaments', [TournamentController::class, 'myTournaments'])->middleware('auth:api');
+
+Route::middleware('auth:api')->post('/tournament-request', [TournamentRequestController::class, 'store']); // Отправить на модерацию
+Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [TournamentRequestController::class, 'acceptRequest']); // Принять
+Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить
+
 // Открытые маршруты (без аутентификации)
 Route::prefix('guest')->group(function () {
     Route::get('/tournaments', [TournamentController::class, 'index']);

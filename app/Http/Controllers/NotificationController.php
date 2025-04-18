@@ -21,11 +21,23 @@ class NotificationController extends Controller
             return response()->json(['error' => 'Не авторизован'], 401);
         }
 
-        // Получаем последние 50 уведомлений пользователя (с учетом статуса)
+        // Получаем уведомления с дополнительными данными
         $notifications = Notification::where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
             ->take(50)
-            ->get(['id', 'message', 'status', 'created_at']);
+            ->get()
+            ->map(function ($notification) {
+                $data = json_decode($notification->data, true);
+
+                return [
+                    'id' => $notification->id,
+                    'message' => $notification->message,
+                    'status' => $notification->status,
+                    'created_at' => $notification->created_at,
+                    'data' => $data, // Добавляем декодированные данные
+                    'type' => $data['type'] ?? null
+                ];
+            });
 
         // Считаем количество непрочитанных уведомлений
         $unreadCount = Notification::where('user_id', $user->id)
@@ -33,7 +45,7 @@ class NotificationController extends Controller
             ->count();
 
         return response()->json([
-            'unread_count' => $unreadCount, // Добавлен счетчик
+            'unread_count' => $unreadCount,
             'notifications' => $notifications
         ]);
     }
