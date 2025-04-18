@@ -394,46 +394,31 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомления отправлены участникам команды.']);
     }
-    public function notifyTournamentRegistration(Request $request, $tournamentId)
+    public function notifyTournamentRegistration(Request $request)
     {
         // Валидация данных
         $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id', // Проверка на существование команды
+            'tournament_id' => 'required|exists:tournaments,id',
+            'team_id' => 'required|exists:teams,id',
         ]);
 
-        $teamId = $validated['team_id'];
+        $tournament = Tournament::find($validated['tournament_id']);
+        $team = Team::find($validated['team_id']);
 
-        // Находим турнир по ID
-        $tournament = Tournament::find($tournamentId);
-
-        if (!$tournament) {
-            return response()->json(['error' => 'Турнир не найден'], 404);
-        }
-
-        // Получаем организатора турнира (предполагаем, что организатор — это создатель турнира)
+        // Получаем организатора турнира
         $organizerId = $tournament->user_id;
 
-        // Получаем информацию о команде
-        $team = Team::find($teamId);
-
-        if (!$team) {
-            return response()->json(['error' => 'Команда не найдена'], 404);
-        }
-
         // Формируем сообщение
-        $message = "Команда " . $team->name . " подала заявку на участие в вашем турнире.";
+        $message = "Команда {$team->name} подала заявку на участие в вашем турнире.";
 
-        // Создаём уведомление для организатора
-        $notification = [
+        // Создаём уведомление
+        Notification::create([
             'user_id' => $organizerId,
             'message' => $message,
             'status' => 'unread',
             'created_at' => now(),
             'updated_at' => now(),
-        ];
-
-        // Вставляем уведомление в таблицу
-        Notification::create($notification);
+        ]);
 
         return response()->json(['message' => 'Уведомление отправлено организатору турнира.']);
     }

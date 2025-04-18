@@ -59,7 +59,7 @@ Route::prefix('guest')->group(function () {
     Route::middleware( 'auth:api')->post('/match/{id}/notify-result', [NotificationController::class, 'notifyMatchResult']);
     Route::middleware( 'auth:api')->post('/match/{id}/notify-next-stage', [NotificationController::class, 'notifyNextStage']);
     Route::middleware( 'auth:api')->post('/match/{id}/notify-team-elimination', [NotificationController::class, 'notifyTeamElimination']);
-    Route::middleware( 'auth:api')->post('/match/{id}/notify-team-registration', [NotificationController::class, 'notifyTournamentRegistration']);
+    Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
     Route::middleware( 'auth:api')->post('/match/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
 });
 
