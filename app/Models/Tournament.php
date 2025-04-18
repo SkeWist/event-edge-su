@@ -32,6 +32,8 @@ class Tournament extends Model
             'pending' => 'Ожидание',
             'ongoing' => 'В процессе',
             'completed' => 'Завершен',
+            'registrationOpen' => 'Регистрация открыта',
+            'registrationClosed' => 'Регистрация закрыта',
         ];
 
         return $statuses[$this->status] ?? 'Неизвестно';

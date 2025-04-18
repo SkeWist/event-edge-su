@@ -57,6 +57,8 @@ class TournamentController extends Controller
             'pending' => 'Ожидается',
             'ongoing' => 'В процессе',
             'completed' => 'Завершен',
+            'registrationOpen' => 'Регистрация открыта',
+            'registrationClosed' => 'Регистрация закрыта',
             default => 'Неизвестный статус',
         };
     }
@@ -71,7 +73,7 @@ class TournamentController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'required|in:pending,ongoing,completed',
+            'status' => 'required|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed',
             'teams' => 'nullable|array',
             'teams.*' => 'exists:teams,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
@@ -127,6 +129,9 @@ class TournamentController extends Controller
             'pending' => 'Ожидание',
             'ongoing' => 'В процессе',
             'completed' => 'Завершен',
+            'canceled' => 'Отменен',
+            'registrationOpen' => 'Регистрация открыта',
+            'registrationClosed' => 'Регистрация закрыта',
         ];
 
         return response()->json([
@@ -217,6 +222,8 @@ class TournamentController extends Controller
             'ongoing' => 'В процессе',
             'completed' => 'Завершен',
             'canceled' => 'Отменен',
+            'registrationOpen' => 'Регистрация открыта',
+            'registrationClosed' => 'Регистрация закрыта',
         ];
 
         $tournaments->transform(function ($tournament) use ($statusNames) {
@@ -247,7 +254,7 @@ class TournamentController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'game_id' => 'nullable|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|string|in:upcoming,ongoing,completed',
+            'status' => 'nullable|string|in:upcoming,ongoing,completed,canceled,registrationOpen,registrationClosed',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
