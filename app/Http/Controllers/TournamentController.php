@@ -65,15 +65,23 @@ class TournamentController extends Controller
     // Создание нового турнира
     public function store(Request $request)
     {
+        // Подготовка данных перед валидацией
+        $data = $request->all();
+
+        // Устанавливаем статус по умолчанию, если он не передан
+        if (!isset($data['status'])) {
+            $data['status'] = 'pending';
+        }
+
         // Валидация данных
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make($data, [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after:start_date',
             'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'required|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed',
+            'status' => 'sometimes|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed',
             'teams' => 'nullable|array',
             'teams.*' => 'exists:teams,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
@@ -83,48 +91,34 @@ class TournamentController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Логируем факт получения запроса
-        Log::info('Запрос на создание турнира', $request->all());
-
-        // Обработка загрузки изображения
+        // Обработка изображения
         $imagePath = null;
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-
             if ($file->isValid()) {
                 $imagePath = $file->store('tournament_images', 'public');
-                Log::info('Файл успешно загружен', ['path' => $imagePath]);
-            } else {
-                Log::error('Ошибка загрузки изображения');
-                return response()->json(['error' => 'Ошибка загрузки изображения'], 400);
             }
-        } else {
-            Log::warning('Файл изображения отсутствует в запросе');
         }
 
-        // Определяем пользователя
-        $userId = Auth::id();
+        // Создание турнира
+        $tournament = Tournament::create([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'] ?? null,
+            'game_id' => $data['game_id'],
+            'stage_id' => $data['stage_id'] ?? null,
+            'status' => $data['status'], // Уже содержит значение по умолчанию
+            'views_count' => 0,
+            'user_id' => Auth::id(),
+            'image' => $imagePath
+        ]);
 
-        // Создаем турнир
-        $tournament = new Tournament();
-        $tournament->name = $request->name;
-        $tournament->description = $request->description;
-        $tournament->start_date = $request->start_date;
-        $tournament->end_date = $request->end_date;
-        $tournament->game_id = $request->game_id;
-        $tournament->stage_id = $request->stage_id;
-        $tournament->status = $request->status;
-        $tournament->views_count = 0;
-        $tournament->user_id = $userId;
-        $tournament->image = $imagePath; // Записываем путь к изображению
-        $tournament->save();
-
-        // Добавляем команды, если они указаны
-        if ($request->has('teams') && is_array($request->teams)) {
-            $tournament->teams()->attach($request->teams);
+        // Привязка команд
+        if (!empty($data['teams'])) {
+            $tournament->teams()->attach($data['teams']);
         }
 
-        // Добавляем статусное название
         $statusNames = [
             'pending' => 'Ожидание',
             'ongoing' => 'В процессе',
@@ -143,8 +137,8 @@ class TournamentController extends Controller
             'stage_id' => $tournament->stage_id,
             'views_count' => $tournament->views_count,
             'status_name' => $statusNames[$tournament->status] ?? 'Неизвестно',
-            'image' => $imagePath ? asset('storage/' . $imagePath) : null, // Ссылка на изображение
-            'teams' => $tournament->teams()->pluck('teams.id') // Список ID команд
+            'image' => $imagePath ? asset('storage/' . $imagePath) : null,
+            'teams' => $tournament->teams()->pluck('teams.id')
         ], 201);
     }
     // Просмотр одного турнира

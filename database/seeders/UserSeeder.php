@@ -15,21 +15,21 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'name' => 'User 1',
-                'email' => 'user1@example.com',
+                'email' => 'admin1@example.com',
                 'role_id' => 1,
                 'password' => Hash::make('password123'),
                 'api_token' => Str::random(60), // Генерация токена
             ],
             [
                 'name' => 'User 2',
-                'email' => 'user2@example.com',
+                'email' => 'editor@example.com',
                 'role_id' => 2,
                 'password' => Hash::make('password123'),
                 'api_token' => Str::random(60),
             ],
             [
                 'name' => 'User 3',
-                'email' => 'user3@example.com',
+                'email' => 'operator@example.com',
                 'role_id' => 3,
                 'password' => Hash::make('password123'),
                 'api_token' => Str::random(60),
