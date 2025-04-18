@@ -18,13 +18,16 @@ class TournamentRequestController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'required|string|max:1000',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
+            'start_date' => 'required|date_format:Y-m-d H:i:s',
+            'end_date' => 'required|date_format:Y-m-d H:i:s|after:start_date',
             'game_id' => 'required|integer',
             'stage_id' => 'required|integer',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'teams' => 'nullable|array',
-            'teams.*' => 'integer',  // Если teams - это массив чисел
+            'teams.*' => 'integer',
+        ], [
+            'start_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-04-20 15:00:00)',
+            'end_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-04-20 18:00:00)',
         ]);
 
         if ($validator->fails()) {
@@ -85,6 +88,7 @@ class TournamentRequestController extends Controller
 
         return response()->json(['message' => 'Турнир отправлен на модерацию.'], 201);
     }
+
 
     // Метод для принятия турнира (администратор)
     public function acceptRequest($id)

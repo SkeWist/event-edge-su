@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Validator;
 
 class TournamentController extends Controller
 {
-    // Просмотр списка турниров
+    //  Просмотр списка турниров
     public function index()
     {
         $tournaments = Tournament::with([
@@ -65,18 +65,20 @@ class TournamentController extends Controller
     // Создание нового турнира
     public function store(Request $request)
     {
-        // Валидация данных
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after:start_date',
+            'start_date' => 'required|date_format:Y-m-d H:i:s',
+            'end_date' => 'nullable|date_format:Y-m-d H:i:s|after:start_date',
             'game_id' => 'required|exists:games,id',
             'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed', // nullable
+            'status' => 'nullable|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed',
             'teams' => 'nullable|array',
             'teams.*' => 'exists:teams,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ], [
+            'start_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-05-10 15:30:00)',
+            'end_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-05-10 18:30:00)',
         ]);
 
         if ($validator->fails()) {
@@ -109,7 +111,7 @@ class TournamentController extends Controller
         $tournament->end_date = $request->end_date;
         $tournament->game_id = $request->game_id;
         $tournament->stage_id = $request->stage_id;
-        $tournament->status = $request->status ?? 'pending'; // 👈 дефолтное значение
+        $tournament->status = $request->status ?? 'pending';
         $tournament->views_count = 0;
         $tournament->user_id = $userId;
         $tournament->image = $imagePath;
