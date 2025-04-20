@@ -12,11 +12,11 @@ class StageTypeController extends Controller
      */
     public function index()
     {
-        // Получаем все типы этапов
-        $stageTypes = StageType::all();
+        $stageTypes = StageType::select('id', 'name')->get();
 
         return response()->json([
-            'stage_types' => $stageTypes
+            'message' => 'Список типов этапов успешно получен.',
+            'data' => $stageTypes
         ]);
     }
     public function store(Request $request)
