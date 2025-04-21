@@ -24,6 +24,7 @@ class GameMatchController extends Controller
             $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
             $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
             $match->stage_name = $match->stage->name ?? 'Этап не указан';
+            $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
 
             unset($match->game, $match->teamA, $match->teamB, $match->stage);
         });
@@ -43,6 +44,7 @@ class GameMatchController extends Controller
         $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
         $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
         $match->stage_name = $match->stage->name ?? 'Этап не указан';
+        $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
 
         unset($match->game, $match->teamA, $match->teamB, $match->stage);
 
@@ -66,9 +68,12 @@ class GameMatchController extends Controller
         $validated['match_date'] = $match_date;
         $match = GameMatch::create($validated);
 
+        $responseMatch = $match->toArray();
+        $responseMatch['match_date'] = Carbon::parse($match->match_date)->format('Y-m-d H:i');
+
         return response()->json([
             'message' => 'Матч успешно создан!',
-            'match' => $match->makeHidden('id'),
+            'match' => $responseMatch,
         ], 201);
     }
 
@@ -98,9 +103,12 @@ class GameMatchController extends Controller
 
         $match->update(array_filter($validated, fn($value) => $value !== null));
 
+        $responseMatch = $match->toArray();
+        $responseMatch['match_date'] = Carbon::parse($match->match_date)->format('Y-m-d H:i');
+
         return response()->json([
             'message' => 'Матч успешно обновлён!',
-            'match' => $match->makeHidden('id'),
+            'match' => $responseMatch,
         ]);
     }
 
@@ -123,7 +131,7 @@ class GameMatchController extends Controller
     public function myMatches(): JsonResponse
     {
         $user = auth()->user();
-        $now = Carbon::now();
+        $now = Carbon::now()->format('Y-m-d H:i');
 
         $teamIds = $user->teams()->pluck('teams.id');
 
@@ -154,6 +162,7 @@ class GameMatchController extends Controller
                 $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
                 $match->stage_name = $match->stage->name ?? 'Этап не указан';
                 $match->winner_team_name = $match->winnerTeam->name ?? null;
+                $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
                 
                 return $match->makeHidden([
                     'game_id', 'team_1_id', 'team_2_id', 'winner_team_id',

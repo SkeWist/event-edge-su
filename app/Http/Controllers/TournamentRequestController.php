@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class TournamentRequestController extends Controller
 {
@@ -78,8 +79,8 @@ class TournamentRequestController extends Controller
                 'id' => $tournamentRequest->id,
                 'name' => $tournamentRequest->name,
                 'description' => $tournamentRequest->description,
-                'start_date' => $tournamentRequest->start_date,
-                'end_date' => $tournamentRequest->end_date,
+                'start_date' => Carbon::parse($tournamentRequest->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournamentRequest->end_date)->format('Y-m-d H:i'),
                 'game_id' => $tournamentRequest->game_id,
                 'stage_id' => $tournamentRequest->stage_id,
                 'status' => $tournamentRequest->status,
@@ -89,7 +90,22 @@ class TournamentRequestController extends Controller
             ]),
         ]);
 
-        return response()->json(['message' => 'Турнир отправлен на модерацию.'], 201);
+        return response()->json([
+            'message' => 'Турнир отправлен на модерацию.',
+            'tournament_request' => [
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'description' => $tournamentRequest->description,
+                'start_date' => Carbon::parse($tournamentRequest->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournamentRequest->end_date)->format('Y-m-d H:i'),
+                'game_id' => $tournamentRequest->game_id,
+                'stage_id' => $tournamentRequest->stage_id,
+                'status' => $tournamentRequest->status,
+                'user_id' => $tournamentRequest->user_id,
+                'image' => $tournamentRequest->image ? asset('storage/' . $tournamentRequest->image) : null,
+                'teams' => $tournamentRequest->teams
+            ]
+        ], 201);
     }
 
     // Метод для отправки турнира на модерацию от пользователя
@@ -146,8 +162,8 @@ class TournamentRequestController extends Controller
                 'id' => $tournamentRequest->id,
                 'name' => $tournamentRequest->name,
                 'description' => $tournamentRequest->description,
-                'start_date' => $tournamentRequest->start_date,
-                'end_date' => $tournamentRequest->end_date,
+                'start_date' => Carbon::parse($tournamentRequest->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournamentRequest->end_date)->format('Y-m-d H:i'),
                 'game_id' => $tournamentRequest->game_id,
                 'stage_id' => $tournamentRequest->stage_id,
                 'status' => $tournamentRequest->status,
@@ -157,7 +173,22 @@ class TournamentRequestController extends Controller
             ]),
         ]);
 
-        return response()->json(['message' => 'Заявка на турнир отправлена на модерацию.'], 201);
+        return response()->json([
+            'message' => 'Заявка на турнир отправлена на модерацию.',
+            'tournament_request' => [
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'description' => $tournamentRequest->description,
+                'start_date' => Carbon::parse($tournamentRequest->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournamentRequest->end_date)->format('Y-m-d H:i'),
+                'game_id' => $tournamentRequest->game_id,
+                'stage_id' => $tournamentRequest->stage_id,
+                'status' => $tournamentRequest->status,
+                'user_id' => $tournamentRequest->user_id,
+                'image' => $tournamentRequest->image ? asset('storage/' . $tournamentRequest->image) : null,
+                'teams' => $tournamentRequest->teams
+            ]
+        ], 201);
     }
 
     // Метод для принятия заявки пользователя (администратор)

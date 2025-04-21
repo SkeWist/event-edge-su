@@ -28,6 +28,26 @@ class TournamentController extends Controller
     public function index(): JsonResponse
     {
         $tournaments = Tournament::with(['game', 'stage', 'organizer'])->get();
+        
+        $tournaments->transform(function ($tournament) {
+            return [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'description' => $tournament->description,
+                'start_date' => Carbon::parse($tournament->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournament->end_date)->format('Y-m-d H:i'),
+                'views_count' => $tournament->views_count,
+                'status' => $tournament->status,
+                'status_name' => $this->getStatusName($tournament->status),
+                'game' => $tournament->game,
+                'stage' => $tournament->stage,
+                'organizer' => $tournament->organizer,
+                'image' => $tournament->image ? asset('storage/' . $tournament->image) : null,
+                'created_at' => Carbon::parse($tournament->created_at)->format('Y-m-d H:i'),
+                'updated_at' => Carbon::parse($tournament->updated_at)->format('Y-m-d H:i')
+            ];
+        });
+
         return response()->json($tournaments);
     }
 
@@ -64,6 +84,14 @@ class TournamentController extends Controller
             $data['image'] = $path;
         }
 
+        // Преобразуем даты в формат с секундами перед сохранением
+        if (isset($data['start_date'])) {
+            $data['start_date'] = Carbon::parse($data['start_date'])->format('Y-m-d H:i:s');
+        }
+        if (isset($data['end_date'])) {
+            $data['end_date'] = Carbon::parse($data['end_date'])->format('Y-m-d H:i:s');
+        }
+
         $tournament = Tournament::create($data);
         $tournament->load(['game', 'stage', 'organizer']);
 
@@ -71,8 +99,8 @@ class TournamentController extends Controller
             'id' => $tournament->id,
             'name' => $tournament->name,
             'description' => $tournament->description,
-            'start_date' => $tournament->start_date,
-            'end_date' => $tournament->end_date,
+            'start_date' => Carbon::parse($tournament->start_date)->format('Y-m-d H:i'),
+            'end_date' => Carbon::parse($tournament->end_date)->format('Y-m-d H:i'),
             'views_count' => $tournament->views_count,
             'status' => $tournament->status,
             'status_name' => $this->getStatusName($tournament->status),
@@ -94,8 +122,8 @@ class TournamentController extends Controller
             'id' => $tournament->id,
             'name' => $tournament->name,
             'description' => $tournament->description,
-            'start_date' => $tournament->start_date,
-            'end_date' => $tournament->end_date,
+            'start_date' => Carbon::parse($tournament->start_date)->format('Y-m-d H:i'),
+            'end_date' => Carbon::parse($tournament->end_date)->format('Y-m-d H:i'),
             'views_count' => $tournament->views_count,
             'status' => $tournament->status,
             'status_name' => $this->getStatusName($tournament->status),
@@ -174,8 +202,8 @@ class TournamentController extends Controller
                 'id' => $tournament->id, // ID турнира
                 'name' => $tournament->name,
                 'description' => $tournament->description,
-                'start_date' => $tournament->start_date,
-                'end_date' => $tournament->end_date,
+                'start_date' => Carbon::parse($tournament->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournament->end_date)->format('Y-m-d H:i'),
                 'views_count' => $tournament->views_count,
                 'organizer' => $tournament->organizer->name ?? 'Неизвестный организатор', // Имя организатора
                 'game' => $tournament->game->name ?? 'Неизвестная игра', // Имя игры
@@ -228,8 +256,8 @@ class TournamentController extends Controller
                 'id' => $tournament->id,
                 'name' => $tournament->name,
                 'description' => $tournament->description,
-                'start_date' => $tournament->start_date,
-                'end_date' => $tournament->end_date,
+                'start_date' => Carbon::parse($tournament->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($tournament->end_date)->format('Y-m-d H:i'),
                 'views_count' => $tournament->views_count,
                 'status_name' => $this->getStatusName($tournament->status),
                 'game' => $tournament->game,
@@ -368,20 +396,20 @@ class TournamentController extends Controller
                 'team_a' => $basket->gameMatch->teamA ? $basket->gameMatch->teamA->name : null,
                 'team_b' => $basket->gameMatch->teamB ? $basket->gameMatch->teamB->name : null,
                 'winner_team' => $basket->gameMatch->winnerTeam ? $basket->gameMatch->winnerTeam->name : null,
-                'created_at' => $basket->created_at,
-                'updated_at' => $basket->updated_at,
+                'created_at' => Carbon::parse($basket->created_at)->format('Y-m-d H:i'),
+                'updated_at' => Carbon::parse($basket->updated_at)->format('Y-m-d H:i'),
                 'game_match' => [
                     'id' => $basket->gameMatch->id,
                     'tournament_id' => $basket->gameMatch->tournament_id,
                     'team_1_id' => $basket->gameMatch->team_1_id,
                     'team_2_id' => $basket->gameMatch->team_2_id,
-                    'match_date' => $basket->gameMatch->match_date,
+                    'match_date' => Carbon::parse($basket->gameMatch->match_date)->format('Y-m-d H:i'),
                     'status' => $basket->gameMatch->status,
                     'result' => $basket->gameMatch->result,
                     'stage_id' => $basket->gameMatch->stage_id,
                     'winner_team_id' => $basket->gameMatch->winner_team_id,
-                    'created_at' => $basket->gameMatch->created_at,
-                    'updated_at' => $basket->gameMatch->updated_at,
+                    'created_at' => Carbon::parse($basket->gameMatch->created_at)->format('Y-m-d H:i'),
+                    'updated_at' => Carbon::parse($basket->gameMatch->updated_at)->format('Y-m-d H:i'),
                 ],
             ];
         });
@@ -479,7 +507,7 @@ class TournamentController extends Controller
                     'team_1_id' => $previousWinners[$i],
                     'team_2_id' => $previousWinners[$i + 1] ?? null,
                     'winner_team_id' => null,
-                    'match_date' => now(),
+                    'match_date' => Carbon::now()->format('Y-m-d H:i'),
                 ]);
 
                 // Добавляем id созданного матча в массив
@@ -499,7 +527,7 @@ class TournamentController extends Controller
                     'team_1_id' => $matchData['team_1_id'],
                     'team_2_id' => $matchData['team_2_id'],
                     'winner_team_id' => $matchData['winner_team_id'] ?? null, // Если победитель указан, передаем его
-                    'match_date' => now(),
+                    'match_date' => Carbon::now()->format('Y-m-d H:i'),
                 ]);
 
                 // Добавляем id созданного матча в массив
@@ -564,7 +592,7 @@ class TournamentController extends Controller
             return response()->json(['error' => 'Доступ запрещён. Только для организаторов и админов.'], 403);
         }
 
-        $now = Carbon::now();
+        $now = Carbon::now()->format('Y-m-d H:i');
 
         // Получаем турниры, созданные пользователем
         $tournamentsQuery = Tournament::where('user_id', $user->id);
