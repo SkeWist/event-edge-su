@@ -2,141 +2,112 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GameMatch\StoreGameMatchRequest;
+use App\Http\Requests\GameMatch\UpdateGameMatchRequest;
 use App\Models\GameMatch;
 use App\Models\TournamentBasket;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Validator;
 
 class GameMatchController extends Controller
 {
     /**
      * Просмотр всех матчей.
      */
-    public function index()
-{
-    $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->get()
-        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+    public function index(): JsonResponse
+    {
+        $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->get()
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
-    $matches->each(function ($match) {
-        $match->game_name = $match->game->name ?? 'Неизвестная игра';
-        $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
-        $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
-        $match->stage_name = $match->stage->name ?? 'Этап не указан';
+        $matches->each(function ($match) {
+            $match->game_name = $match->game->name ?? 'Неизвестная игра';
+            $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+            $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+            $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-        unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
-    });
+            unset($match->game, $match->teamA, $match->teamB, $match->stage);
+        });
 
-    return response()->json($matches);
-}
+        return response()->json($matches);
+    }
 
     /**
      * Просмотр матча по id.
      */
-    public function show($id)
-{
-    $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
-        ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+    public function show(int $id): JsonResponse
+    {
+        $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
+            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
 
-    $match->game_name = $match->game->name ?? 'Неизвестная игра';
-    $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда'; // Используем teamA
-    $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда'; // Используем teamB
-    $match->stage_name = $match->stage->name ?? 'Этап не указан';
+        $match->game_name = $match->game->name ?? 'Неизвестная игра';
+        $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+        $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+        $match->stage_name = $match->stage->name ?? 'Этап не указан';
 
-    unset($match->game, $match->teamA, $match->teamB, $match->stage); // Очищаем связи
+        unset($match->game, $match->teamA, $match->teamB, $match->stage);
 
-    return response()->json($match);
-}
+        return response()->json($match);
+    }
 
     /**
      * Создание нового матча.
      */
-    public function store(Request $request)
-{
-    // Валидация данных
-    $validator = Validator::make($request->all(), [
-        'tournament_id' => 'required|exists:tournaments,id',
-        'team_1_id' => 'required|exists:teams,id',
-        'team_2_id' => 'required|exists:teams,id',
-        'match_date' => 'required|date_format:Y-m-d\TH:i',
-        'stage_id' => 'nullable|exists:stages,id',
-        'status' => 'required|in:pending,completed,canceled',
-    ]);
+    public function store(StoreGameMatchRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        
+        try {
+            $match_date = Carbon::createFromFormat('Y-m-d\TH:i', $validated['match_date'])
+                ->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Неверный формат даты и времени'], 400);
+        }
 
-    if ($validator->fails()) {
-        return response()->json(['error' => $validator->errors()], 400);
+        $validated['match_date'] = $match_date;
+        $match = GameMatch::create($validated);
+
+        return response()->json([
+            'message' => 'Матч успешно создан!',
+            'match' => $match->makeHidden('id'),
+        ], 201);
     }
-
-    try {
-        // Преобразование строки даты в объект Carbon
-        $match_date = Carbon::createFromFormat('Y-m-d\TH:i', $request->match_date);
-
-        // Преобразуем дату в формат, который можно сохранить в базе данных (Y-m-d H:i:s)
-        $match_date = $match_date->format('Y-m-d H:i:s');
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Неверный формат даты и времени'], 400);
-    }
-
-    // Создание нового матча
-    $match = GameMatch::create([
-        'tournament_id' => $request->tournament_id,
-        'team_1_id' => $request->team_1_id,
-        'team_2_id' => $request->team_2_id,
-        'match_date' => $match_date,
-        'stage_id' => $request->stage_id,
-        'status' => $request->status,
-    ]);
-
-    return response()->json([
-        'message' => 'Матч успешно создан!',
-        'match' => $match->makeHidden('id'),
-    ], 201);
-}
 
     /**
      * Редактирование существующего матча.
      */
-  public function update(Request $request, $id)
-{
-    // Проверяем, какие данные реально пришли
-    \Log::info('Данные запроса:', $request->all());
+    public function update(UpdateGameMatchRequest $request, int $id): JsonResponse
+    {
+        $match = GameMatch::findOrFail($id);
+        $validated = $request->validated();
 
-    // Валидация
-    $validator = Validator::make($request->all(), [
-        'tournament_id' => 'nullable|exists:tournaments,id', // Сделали nullable
-        'team_1_id' => 'nullable|exists:teams,id',
-        'team_2_id' => 'nullable|exists:teams,id',
-        'match_date' => 'nullable|date_format:Y-m-d H:i:s', // Изменили формат даты
-        'stage_id' => 'nullable|exists:stages,id',
-        'status' => 'required|in:pending,completed,canceled',
-    ]);
+        if (isset($validated['match_date'])) {
+            try {
+                $validated['match_date'] = Carbon::createFromFormat('Y-m-d H:i:s', $validated['match_date'])
+                    ->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Неверный формат даты и времени'], 400);
+            }
+        }
 
-    if ($validator->fails()) {
-        \Log::error('Ошибка валидации: ', $validator->errors()->toArray());
-        return response()->json(['error' => $validator->errors()], 400);
+        // Если статус меняется на completed, проверяем наличие результата и победителя
+        if ($validated['status'] === 'completed' && (!isset($validated['result']) || !isset($validated['winner_team_id']))) {
+            return response()->json([
+                'error' => 'При завершении матча необходимо указать результат и команду-победителя'
+            ], 400);
+        }
+
+        $match->update(array_filter($validated, fn($value) => $value !== null));
+
+        return response()->json([
+            'message' => 'Матч успешно обновлён!',
+            'match' => $match->makeHidden('id'),
+        ]);
     }
 
-    // Находим матч
-    $match = GameMatch::findOrFail($id);
-
-    // Формируем данные для обновления
-    $updateData = $request->only([
-        'game_id', 'team_1_id', 'team_2_id', 'match_date', 'stage_id', 'status'
-    ]);
-
-    if ($request->has('match_date')) {
-        $updateData['match_date'] = Carbon::createFromFormat('Y-m-d H:i:s', $request->match_date)->format('Y-m-d H:i:s');
-    }
-
-    // Обновляем только ненулевые значения
-    $match->update(array_filter($updateData, fn($value) => $value !== null));
-
-    return response()->json([
-        'message' => 'Матч успешно обновлён!',
-        'match' => $match->makeHidden('id'),
-    ]);
-}
-    public function destroy($id)
+    /**
+     * Удаление матча.
+     */
+    public function destroy(int $id): JsonResponse
     {
         $match = GameMatch::findOrFail($id);
         $match->delete();
@@ -145,26 +116,27 @@ class GameMatchController extends Controller
             'message' => 'Матч успешно удалён!',
         ]);
     }
-    public function myMatches(Request $request)
+
+    /**
+     * Получение матчей пользователя.
+     */
+    public function myMatches(): JsonResponse
     {
         $user = auth()->user();
         $now = Carbon::now();
 
-        // Получаем все ID команд пользователя через связь many-to-many
         $teamIds = $user->teams()->pluck('teams.id');
 
         if ($teamIds->isEmpty()) {
             return response()->json(['error' => 'У вас нет привязанных команд.'], 404);
         }
 
-        // Базовый запрос: все матчи, где участвует хотя бы одна из команд пользователя
-        $matchesQuery = GameMatch::with(['game', 'teamA', 'teamB', 'stage','winnerTeam'])
+        $matchesQuery = GameMatch::with(['game', 'teamA', 'teamB', 'stage', 'winnerTeam'])
             ->where(function ($query) use ($teamIds) {
                 $query->whereIn('team_1_id', $teamIds)
                     ->orWhereIn('team_2_id', $teamIds);
             });
 
-        // Разделяем на прошлые и будущие
         $pastMatches = (clone $matchesQuery)
             ->where('match_date', '<', $now)
             ->orderBy('match_date', 'desc')
@@ -175,7 +147,6 @@ class GameMatchController extends Controller
             ->orderBy('match_date', 'asc')
             ->get();
 
-        // Обработка
         $formatMatches = function ($matches) {
             return $matches->map(function ($match) {
                 $match->game_name = $match->game->name ?? 'Неизвестная игра';
@@ -183,6 +154,7 @@ class GameMatchController extends Controller
                 $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
                 $match->stage_name = $match->stage->name ?? 'Этап не указан';
                 $match->winner_team_name = $match->winnerTeam->name ?? null;
+                
                 return $match->makeHidden([
                     'game_id', 'team_1_id', 'team_2_id', 'winner_team_id',
                     'created_at', 'updated_at',

@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Notification\AcceptTeamRegistrationRequest;
+use App\Http\Requests\Notification\NotifyMatchRescheduleRequest;
+use App\Http\Requests\Notification\NotifyMatchResultRequest;
+use App\Http\Requests\Notification\NotifyNextStageRequest;
+use App\Http\Requests\Notification\NotifyTeamEliminationRequest;
+use App\Http\Requests\Notification\NotifyTournamentRegistrationRequest;
+use App\Http\Requests\Notification\SendReminderRequest;
 use App\Models\GameMatch;
 use App\Models\Notification;
 use App\Models\Stage;
@@ -9,12 +16,13 @@ use App\Models\Team;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Notifications\MatchResultNotification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
-    public function getUserNotifications(Request $request)
+    public function getUserNotifications(Request $request): JsonResponse
     {
         $user = auth()->user();
 
@@ -50,7 +58,7 @@ class NotificationController extends Controller
             'notifications' => $notifications
         ]);
     }
-    public function getUnreadNotifications(Request $request)
+    public function getUnreadNotifications(Request $request): JsonResponse
     {
         $user = auth()->user();
 
@@ -71,7 +79,7 @@ class NotificationController extends Controller
 
         return response()->json($unreadNotifications);
     }
-    public function notifyTournamentRegistrationOpen($tournamentId)
+    public function notifyTournamentRegistrationOpen($tournamentId): JsonResponse
     {
         // Находим турнир
         $tournament = Tournament::find($tournamentId);
@@ -98,7 +106,7 @@ class NotificationController extends Controller
         }
         return response()->json(['message' => 'Уведомления отправлены всем пользователям.']);
     }
-    public function notifyRegistrationClosed($tournamentId)
+    public function notifyRegistrationClosed($tournamentId): JsonResponse
     {
         // Находим турнир
         $tournament = Tournament::find($tournamentId);
@@ -128,7 +136,7 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомление отправлено организатору турнира.']);
     }
-    public function notifyTournamentStart($tournamentId)
+    public function notifyTournamentStart($tournamentId): JsonResponse
     {
         // Находим турнир
         $tournament = Tournament::find($tournamentId);
@@ -166,13 +174,8 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомления отправлены всем участникам турнира.']);
     }
-    public function notifyMatchReschedule(Request $request, $matchId)
+    public function notifyMatchReschedule(NotifyMatchRescheduleRequest $request, $matchId): JsonResponse
     {
-        // Валидация данных
-        $request->validate([
-            'new_time' => 'required|date_format:H:i', // Новый формат времени HH:MM
-        ]);
-
         // Находим матч
         $match = GameMatch::find($matchId);
 
@@ -230,52 +233,75 @@ class NotificationController extends Controller
             'team_2' => $team2->name,
         ]);
     }
-    public function notifyMatchResult(Request $request, $matchId)
+    public function notifyMatchResult(NotifyMatchResultRequest $request, $matchId): JsonResponse
     {
-        // Валидация входящих данных
-        $request->validate([
-            'winner_team_id' => 'required|exists:teams,id',
-            'result' => 'required|string',
-        ]);
-
-        // Поиск матча
+        // Находим матч
         $match = GameMatch::find($matchId);
 
         if (!$match) {
             return response()->json(['error' => 'Матч не найден'], 404);
         }
 
-        // Обновляем данные матча
-        $match->update([
-            'winner_team_id' => $request->winner_team_id,
-            'result' => $request->result,
-        ]);
+        // Проверяем, что указан корректный номер команды (1 или 2)
+        if (!in_array($request->winner_team_id, [1, 2])) {
+            return response()->json(['error' => 'Некорректный номер команды-победителя. Используйте 1 для первой команды или 2 для второй'], 400);
+        }
 
-        // Получаем команды
-        $team1 = $match->teamA;
-        $team2 = $match->teamA;
+        // Получаем команды матча
+        $team1 = Team::find($match->team_1_id);
+        $team2 = Team::find($match->team_2_id);
 
         if (!$team1 || !$team2) {
             return response()->json(['error' => 'У матча нет корректных команд'], 400);
         }
 
-        // Определяем победителя и проигравшего
-        $winnerTeam = ($team1->id == $request->winner_team_id) ? $team1 : $team2;
-        $loserTeam = ($winnerTeam->id == $team1->id) ? $team2 : $team1;
+        // Определяем победителя и проигравшего по номеру команды
+        $winnerTeam = $request->winner_team_id == 1 ? $team1 : $team2;
+        $loserTeam = $request->winner_team_id == 1 ? $team2 : $team1;
+
+        // Обновляем данные матча
+        $match->update([
+            'winner_team_id' => $winnerTeam->id,
+            'result' => $request->result,
+        ]);
 
         // Получаем участников обеих команд
-        $participants = $team1->users->merge($team2->users)->unique();
+        $participants = DB::table('team_user')
+            ->whereIn('team_id', [$team1->id, $team2->id])
+            ->pluck('user_id')
+            ->unique();
 
-        foreach ($participants as $user) {
-            $isWinner = $user->teams->contains($winnerTeam);
+        if ($participants->isEmpty()) {
+            return response()->json(['error' => 'Нет участников для уведомления'], 400);
+        }
+
+        // Создаем уведомления для всех участников
+        $notifications = collect();
+
+        foreach ($participants as $userId) {
+            // Определяем команду пользователя
+            $userTeam = DB::table('team_user')
+                ->where('user_id', $userId)
+                ->whereIn('team_id', [$team1->id, $team2->id])
+                ->value('team_id');
+
+            $isWinner = $userTeam == $winnerTeam->id;
 
             $message = $isWinner
                 ? "Вы победили команду {$loserTeam->name} со счётом {$request->result}!"
                 : "Вы проиграли команде {$winnerTeam->name} со счётом {$request->result}.";
 
-            // Отправляем уведомление через Laravel Notification (используя канал database)
-            $user->notify(new MatchResultNotification($message));
+            $notifications->push([
+                'user_id' => $userId,
+                'message' => $message,
+                'status' => 'unread',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
+
+        // Сохраняем уведомления в БД
+        Notification::insert($notifications->toArray());
 
         return response()->json([
             'message' => 'Результат матча сохранён и уведомления отправлены.',
@@ -286,17 +312,8 @@ class NotificationController extends Controller
     }
 
 
-    public function notifyNextStage(Request $request, $tournamentId)
+    public function notifyNextStage(NotifyNextStageRequest $request, $tournamentId): JsonResponse
     {
-        // Валидация данных
-        $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id', // Проверка на существование команды
-            'stage_id' => 'required|exists:stages,id', // Проверка на существование этапа
-        ]);
-
-        $teamId = $validated['team_id'];
-        $stageId = $validated['stage_id'];
-
         // Находим турнир по ID
         $tournament = Tournament::find($tournamentId);
 
@@ -310,13 +327,13 @@ class NotificationController extends Controller
             ->pluck('team_id');
 
         // Проверяем, что команда участвует в турнире
-        if (!in_array($teamId, $teamsInTournament->toArray())) {
+        if (!in_array($request->team_id, $teamsInTournament->toArray())) {
             return response()->json(['error' => 'Команда не участвует в данном турнире'], 400);
         }
 
         // Получаем участников команды
         $participants = DB::table('team_user')
-            ->where('team_id', $teamId)
+            ->where('team_id', $request->team_id)
             ->pluck('user_id');
 
         if ($participants->isEmpty()) {
@@ -324,7 +341,7 @@ class NotificationController extends Controller
         }
 
         // Получаем название этапа по stage_id
-        $stage = Stage::find($stageId);
+        $stage = Stage::find($request->stage_id);
 
         if (!$stage) {
             return response()->json(['error' => 'Этап не найден'], 404);
@@ -349,15 +366,8 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомления отправлены участникам команды.']);
     }
-    public function notifyTeamElimination(Request $request, $tournamentId)
+    public function notifyTeamElimination(NotifyTeamEliminationRequest $request, $tournamentId): JsonResponse
     {
-        // Валидация данных
-        $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id', // Проверка на существование команды
-        ]);
-
-        $teamId = $validated['team_id'];
-
         // Находим турнир по ID
         $tournament = Tournament::find($tournamentId);
 
@@ -367,7 +377,7 @@ class NotificationController extends Controller
 
         // Получаем участников команды
         $participants = DB::table('team_user')
-            ->where('team_id', $teamId)
+            ->where('team_id', $request->team_id)
             ->pluck('user_id');
 
         if ($participants->isEmpty()) {
@@ -393,16 +403,11 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомления отправлены участникам команды.']);
     }
-    public function notifyTournamentRegistration(Request $request)
+    public function notifyTournamentRegistration(NotifyTournamentRegistrationRequest $request): JsonResponse
     {
         // Валидация данных
-        $validated = $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'team_id' => 'required|exists:teams,id',
-        ]);
-
-        $tournament = Tournament::find($validated['tournament_id']);
-        $team = Team::find($validated['team_id']);
+        $tournament = Tournament::find($request->tournament_id);
+        $team = Team::find($request->team_id);
 
         // Получаем организатора турнира
         $organizerId = $tournament->user_id;
@@ -421,15 +426,8 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомление отправлено организатору турнира.']);
     }
-    public function acceptTeamRegistration(Request $request, $tournamentId)
+    public function acceptTeamRegistration(AcceptTeamRegistrationRequest $request, $tournamentId): JsonResponse
     {
-        // Валидация данных
-        $validated = $request->validate([
-            'team_id' => 'required|exists:teams,id', // Проверка на существование команды
-        ]);
-
-        $teamId = $validated['team_id'];
-
         // Находим турнир по ID
         $tournament = Tournament::find($tournamentId);
 
@@ -440,7 +438,7 @@ class NotificationController extends Controller
         // Проверяем, была ли заявка от этой команды на участие в турнире
         $existingRegistration = DB::table('tournament_teams')
             ->where('tournament_id', $tournamentId)
-            ->where('team_id', $teamId)
+            ->where('team_id', $request->team_id)
             ->first();
 
         if ($existingRegistration) {
@@ -450,18 +448,18 @@ class NotificationController extends Controller
         // Добавляем команду в таблицу tournament_teams
         DB::table('tournament_teams')->insert([
             'tournament_id' => $tournamentId,
-            'team_id' => $teamId,
+            'team_id' => $request->team_id,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         // Формируем уведомление для команды, что она принята в турнир
-        $team = Team::find($teamId);
+        $team = Team::find($request->team_id);
         $message = "Ваша команда " . $team->name . " была принята в турнир '" . $tournament->name . "'.";
 
         // Получаем участников команды
         $participants = DB::table('team_user')
-            ->where('team_id', $teamId)
+            ->where('team_id', $request->team_id)
             ->pluck('user_id');
 
         // Создаём уведомления для участников команды
@@ -480,17 +478,8 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Заявка на участие принята. Команда добавлена в турнир.']);
     }
-    public function sendRemainderTeam(Request $request, $matchId)
+    public function sendRemainderTeam(SendReminderRequest $request, $matchId): JsonResponse
     {
-        // Валидация данных
-        $request->validate([
-            'reminder_time' => 'required|integer|min:1', // Время за сколько отправлять напоминание, например 60 (для минут) или 1 (для часов)
-            'unit' => 'required|in:minutes,hours', // Указываем, в каких единицах (минуты или часы) мы отправляем напоминание
-        ]);
-
-        $reminderTime = $request->reminder_time;
-        $unit = $request->unit; // 'minutes' или 'hours'
-
         // Находим матч по ID
         $match = GameMatch::find($matchId);
 
@@ -506,13 +495,7 @@ class NotificationController extends Controller
         // Вычисляем разницу во времени
         $timeDifference = $match->match_date->diffInMinutes(now());
 
-        if ($unit == 'hours') {
-            // Если уведомление в часах, преобразуем время в часы
-            $reminderTimeInMinutes = $reminderTime * 60;
-        } else {
-            // Если уведомление в минутах, просто используем это значение
-            $reminderTimeInMinutes = $reminderTime;
-        }
+        $reminderTimeInMinutes = $request->unit == 'hours' ? $request->reminder_time * 60 : $request->reminder_time;
 
         // Проверяем, что напоминание не сработает, если матч уже начнется в заданный промежуток времени
         if ($timeDifference <= $reminderTimeInMinutes) {
@@ -535,7 +518,7 @@ class NotificationController extends Controller
         // Формируем сообщение
         $team1 = Team::find($match->team_1_id)->name;
         $team2 = Team::find($match->team_2_id)->name;
-        $message = "Ваш матч против $team2 начнётся через $reminderTime $unit.";
+        $message = "Ваш матч против $team2 начнётся через $request->reminder_time $request->unit.";
 
         // Отправляем уведомления для участников
         $notifications = $participants->map(function ($userId) use ($message) {

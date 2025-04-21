@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Stage\StoreStageRequest;
+use App\Http\Requests\Stage\UpdateStageRequest;
 use App\Models\Stage;
 use App\Models\StageType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\JsonResponse;
 
 class StageController extends Controller
 {
-    // Просмотр всех этапов
-    public function index()
+    /**
+     * Просмотр всех этапов
+     */
+    public function index(): JsonResponse
     {
         $stages = Stage::with('stageType')->get();  // Загрузка этапов с типами
 
@@ -23,8 +28,11 @@ class StageController extends Controller
 
         return response()->json($stages);
     }
-    // Просмотр одного этапа по ID
-    public function show($id)
+
+    /**
+     * Просмотр одного этапа по ID
+     */
+    public function show(int $id): JsonResponse
     {
         $stage = Stage::with('stageType')->findOrFail($id);  // Загрузка этапа с типом
 
@@ -34,30 +42,13 @@ class StageController extends Controller
 
         return response()->json($stage);
     }
-    // Создание нового этапа
-    public function store(Request $request)
+
+    /**
+     * Создание нового этапа
+     */
+    public function store(StoreStageRequest $request): JsonResponse
     {
-        // Валидация данных
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after:start_date', // Если end_date указан, он должен быть после start_date
-            'stage_type_id' => 'required|exists:stage_types,id',
-            'rounds' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
-        // Создание нового этапа
-        $stage = Stage::create([
-            'name' => $request->name,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'stage_type_id' => $request->stage_type_id,
-            'rounds' => $request->rounds,
-        ]);
+        $stage = Stage::create($request->validated());
 
         return response()->json([
             'message' => 'Этап успешно создан!',
@@ -65,27 +56,16 @@ class StageController extends Controller
         ], 201);
     }
 
-    // Редактирование этапа
-    public function update(Request $request, $id)
+    /**
+     * Редактирование этапа
+     */
+    public function update(UpdateStageRequest $request, int $id): JsonResponse
     {
-        // Валидация данных
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date', // Если end_date указан, он должен быть после start_date
-            'stage_type_id' => 'nullable|exists:stage_types,id',
-            'rounds' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
         // Находим этап по ID
         $stage = Stage::findOrFail($id);
 
         // Обновляем этап
-        $stage->update($request->only(['name', 'start_date', 'end_date', 'stage_type_id', 'rounds']));
+        $stage->update($request->validated());
 
         return response()->json([
             'message' => 'Этап успешно обновлен!',
@@ -93,8 +73,10 @@ class StageController extends Controller
         ]);
     }
 
-    // Удаление этапа
-    public function destroy($id)
+    /**
+     * Удаление этапа
+     */
+    public function destroy(int $id): JsonResponse
     {
         // Находим этап по ID
         $stage = Stage::findOrFail($id);

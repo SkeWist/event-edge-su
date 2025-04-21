@@ -7,6 +7,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 
 class User extends Authenticatable
@@ -51,5 +53,25 @@ class User extends Authenticatable
     public function tournaments()
     {
         return $this->hasMany(Tournament::class);
+    }
+    public function bans(): HasMany
+    {
+        return $this->hasMany(Ban::class);
+    }
+    public function activeBan(): HasOne
+    {
+        return $this->hasOne(Ban::class)
+            ->where(function ($query) {
+                $query->where('is_permanent', true)
+                    ->orWhere('banned_until', '>', now());
+            });
+    }
+    public function isBanned(): bool
+    {
+        return $this->activeBan()->exists();
+    }
+    public function getBanReason(): ?string
+    {
+        return $this->activeBan?->reason;
     }
 }

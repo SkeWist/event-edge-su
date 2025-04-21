@@ -11,6 +11,7 @@ class TournamentRequest extends Model
 
     // Указываем, какие поля можно массово заполнять
     protected $fillable = [
+        'user_id',
         'name',
         'description',
         'start_date',
@@ -18,14 +19,16 @@ class TournamentRequest extends Model
         'game_id',
         'stage_id',
         'status',
-        'user_id',
-        'teams',
-        'image'
+        'request_type',
+        'image',
+        'teams'
     ];
 
     // Тип поля teams (это JSON)
     protected $casts = [
-        'teams' => 'array',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'teams' => 'array'
     ];
 
     // Связь с таблицей игр

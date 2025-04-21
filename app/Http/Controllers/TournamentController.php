@@ -17,118 +17,55 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Requests\Tournament\StoreTournamentRequest;
+use App\Http\Requests\Tournament\UpdateTournamentRequest;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 
 class TournamentController extends Controller
 {
     //  Просмотр списка турниров
-    public function index()
+    public function index(): JsonResponse
     {
-        $tournaments = Tournament::with([
-            'organizer:id,name',
-            'game:id,name',
-            'stage:id,name',
-            'teams:id,name' // Добавляем id команд, чтобы избежать ошибки
-        ])->get()->map(function ($tournament) {
-            return [
-                'id' => $tournament->id,
-                'name' => $tournament->name,
-                'description' => $tournament->description,
-                'start_date' => $tournament->start_date,
-                'end_date' => $tournament->end_date,
-                'views_count' => $tournament->views_count,
-                'status_name' => $this->getStatusName($tournament->status), // Название статуса
-                'organizer' => $tournament->organizer,
-                'game' => $tournament->game,
-                'stage' => $tournament->stage,
-                'teams' => $tournament->teams,
-                'image' => $tournament->image
-            ];
-        });
-
+        $tournaments = Tournament::with(['game', 'stage', 'organizer'])->get();
         return response()->json($tournaments);
     }
 
     /**
      * Метод для получения читаемого названия статуса
      */
-    private function getStatusName($status)
+    private function getStatusName($status): string
     {
         return match ($status) {
             'pending' => 'Ожидается',
             'ongoing' => 'В процессе',
             'completed' => 'Завершен',
-            'registrationOpen' => 'Регистрация открыта',
-            'registrationClosed' => 'Регистрация закрыта',
-            default => 'Неизвестный статус',
-        };
-    }
-    // Создание нового турнира
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'required|date_format:Y-m-d H:i:s',
-            'end_date' => 'nullable|date_format:Y-m-d H:i:s|after:start_date',
-            'game_id' => 'required|exists:games,id',
-            'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|in:pending,ongoing,completed,canceled,registrationOpen,registrationClosed',
-            'teams' => 'nullable|array',
-            'teams.*' => 'exists:teams,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ], [
-            'start_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-05-10 15:30:00)',
-            'end_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-05-10 18:30:00)',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
-        Log::info('Запрос на создание турнира', $request->all());
-
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $file = $request->file('image');
-
-            if ($file->isValid()) {
-                $imagePath = $file->store('tournament_images', 'public');
-                Log::info('Файл успешно загружен', ['path' => $imagePath]);
-            } else {
-                Log::error('Ошибка загрузки изображения');
-                return response()->json(['error' => 'Ошибка загрузки изображения'], 400);
-            }
-        } else {
-            Log::warning('Файл изображения отсутствует в запросе');
-        }
-
-        $userId = Auth::id();
-
-        $tournament = new Tournament();
-        $tournament->name = $request->name;
-        $tournament->description = $request->description;
-        $tournament->start_date = $request->start_date;
-        $tournament->end_date = $request->end_date;
-        $tournament->game_id = $request->game_id;
-        $tournament->stage_id = $request->stage_id;
-        $tournament->status = $request->status ?? 'pending';
-        $tournament->views_count = 0;
-        $tournament->user_id = $userId;
-        $tournament->image = $imagePath;
-        $tournament->save();
-
-        if ($request->has('teams') && is_array($request->teams)) {
-            $tournament->teams()->attach($request->teams);
-        }
-
-        $statusNames = [
-            'pending' => 'Ожидание',
-            'ongoing' => 'В процессе',
-            'completed' => 'Завершен',
             'canceled' => 'Отменен',
             'registrationOpen' => 'Регистрация открыта',
             'registrationClosed' => 'Регистрация закрыта',
-        ];
+            default => 'Неизвестно',
+        };
+    }
+    // Создание нового турнира
+    public function store(StoreTournamentRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        
+        // Убедимся, что статус установлен
+        if (!isset($data['status']) || empty($data['status'])) {
+            $data['status'] = 'pending';
+        }
+
+        // Устанавливаем user_id из аутентифицированного пользователя
+        $data['user_id'] = auth()->id();
+        
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('tournaments', 'public');
+            $data['image'] = $path;
+        }
+
+        $tournament = Tournament::create($data);
+        $tournament->load(['game', 'stage', 'organizer']);
 
         return response()->json([
             'id' => $tournament->id,
@@ -136,27 +73,20 @@ class TournamentController extends Controller
             'description' => $tournament->description,
             'start_date' => $tournament->start_date,
             'end_date' => $tournament->end_date,
-            'stage_id' => $tournament->stage_id,
             'views_count' => $tournament->views_count,
-            'status_name' => $statusNames[$tournament->status] ?? 'Неизвестно',
-            'image' => $imagePath ? asset('storage/' . $imagePath) : null,
-            'teams' => $tournament->teams()->pluck('teams.id')
+            'status' => $tournament->status,
+            'status_name' => $this->getStatusName($tournament->status),
+            'game' => $tournament->game,
+            'stage' => $tournament->stage,
+            'organizer' => $tournament->organizer,
+            'image' => $tournament->image ? asset('storage/' . $tournament->image) : null
         ], 201);
     }
 
     // Просмотр одного турнира
-    public function show($id)
+    public function show(Tournament $tournament): JsonResponse
     {
-        $tournament = Tournament::with([
-            'organizer:id,name',
-            'game:id,name',
-            'stage:id,name',
-            'teams:name'
-        ])->findOrFail($id);
-
-        // Увеличиваем количество просмотров
-        $tournament->increment('views_count');
-
+        $tournament->load(['game', 'stage', 'organizer']);
         return response()->json($tournament);
     }
 
@@ -241,57 +171,67 @@ class TournamentController extends Controller
         return response()->json($tournaments);
     }
     // Обновление турнира
-    public function update(Request $request, $id)
+    public function update(UpdateTournamentRequest $request, $id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'user_id' => 'nullable|exists:users,id',
-            'game_id' => 'nullable|exists:games,id',
-            'stage_id' => 'nullable|exists:stages,id',
-            'status' => 'nullable|string|in:upcoming,ongoing,completed,canceled,registrationOpen,registrationClosed',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-        ]);
+        try {
+            \Log::info('Updating tournament', ['id' => $id, 'request_data' => $request->all()]);
+            
+            $data = $request->validated();
+            \Log::info('Validated data', $data);
+            
+            // Проверяем существование турнира
+            $tournament = Tournament::where('id', $id)->first();
+            
+            if (!$tournament) {
+                \Log::error('Tournament not found', ['id' => $id]);
+                return response()->json(['error' => 'Турнир не найден'], 404);
+            }
+            
+            \Log::info('Found tournament', $tournament->toArray());
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+            if ($request->hasFile('image')) {
+                // Удаляем старое изображение, если оно есть
+                if ($tournament->image) {
+                    Storage::disk('public')->delete($tournament->image);
+                }
+                $path = $request->file('image')->store('tournaments', 'public');
+                $data['image'] = $path;
+            }
+
+            $tournament->update($data);
+            \Log::info('Tournament after update', $tournament->toArray());
+            
+            // Обновляем модель и загружаем связи
+            $tournament->refresh();
+            $tournament->load(['game', 'stage', 'organizer']);
+            
+            \Log::info('Tournament after refresh', $tournament->toArray());
+
+            $response = [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'description' => $tournament->description,
+                'start_date' => $tournament->start_date,
+                'end_date' => $tournament->end_date,
+                'views_count' => $tournament->views_count,
+                'status_name' => $this->getStatusName($tournament->status),
+                'game' => $tournament->game,
+                'stage' => $tournament->stage,
+                'organizer' => $tournament->organizer,
+                'image' => $tournament->image ? asset('storage/' . $tournament->image) : null
+            ];
+            
+            \Log::info('Response', $response);
+            
+            return response()->json($response);
+        } catch (\Exception $e) {
+            \Log::error('Update error', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Не удалось обновить турнир: ' . $e->getMessage()], 500);
         }
-
-        $tournament = Tournament::findOrFail($id);
-
-        // Загрузка нового изображения (если оно передано)
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('tournament_images', 'public');
-            $tournament->image = $imagePath;
-        }
-
-        $tournament->update($request->except('image'));
-
-        // Добавляем статус в ответе
-        return response()->json([
-            'id' => $tournament->id,
-            'name' => $tournament->name,
-            'description' => $tournament->description,
-            'start_date' => $tournament->start_date,
-            'end_date' => $tournament->end_date,
-            'views_count' => $tournament->views_count,
-            'status_name' => $this->getStatusName($tournament->status),
-            'image' => $imagePath ? asset('storage/' . $imagePath) : null,
-            'organizer' => $tournament->organizer ? [
-                'id' => $tournament->organizer->id,
-                'name' => $tournament->organizer->name,
-            ] : null,
-            'game' => $tournament->game ? [
-                'id' => $tournament->game->id,
-                'name' => $tournament->game->name,
-            ] : null,
-            'stage' => $tournament->stage ? [
-                'id' => $tournament->stage->id,
-                'name' => $tournament->stage->name,
-            ] : null,
-        ]);
     }
     public function addMatchToTournament(Request $request)
     {
@@ -589,13 +529,14 @@ class TournamentController extends Controller
         return response()->json($statistics);
     }
     // Удаление турнира
-    public function destroy($id)
+    public function destroy(Tournament $tournament): JsonResponse
     {
-        $tournament = Tournament::findOrFail($id);
-        $tournament->teams()->detach(); // Удаляем связи перед удалением турнира
+        if ($tournament->image) {
+            Storage::disk('public')->delete($tournament->image);
+        }
+        
         $tournament->delete();
-
-        return response()->json(['message' => 'Турнир удален']);
+        return response()->json(null, 204);
     }
     public function myTournaments(Request $request)
     {
@@ -627,5 +568,31 @@ class TournamentController extends Controller
             'past_tournaments' => $pastTournaments,
             'upcoming_tournaments' => $upcomingTournaments,
         ]);
+    }
+    // Метод для получения списка команд, участвующих в турнире
+    public function getTournamentTeams($id)
+    {
+        // Находим турнир
+        $tournament = Tournament::find($id);
+
+        if (!$tournament) {
+            return response()->json(['error' => 'Турнир не найден.'], 404);
+        }
+
+        // Получаем команды из JSON поля teams
+        $teams = json_decode($tournament->teams, true) ?? [];
+
+        // Если команды есть, получаем их полную информацию
+        if (!empty($teams)) {
+            // Преобразуем вложенные массивы в плоский массив ID
+            $teamIds = collect($teams)->flatten()->unique()->values()->all();
+            $teams = Team::whereIn('id', $teamIds)->get();
+        }
+
+        return response()->json([
+            'tournament_id' => $tournament->id,
+            'tournament_name' => $tournament->name,
+            'teams' => $teams
+        ], 200);
     }
 }

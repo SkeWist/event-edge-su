@@ -13,6 +13,7 @@ use App\Http\Controllers\TeamInviteController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\TournamentRequestController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\BanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -35,14 +36,21 @@ Route::get('/my-matches', [GameMatchController::class, 'myMatches'])->middleware
 Route::get('/my-tournaments', [TournamentController::class, 'myTournaments'])->middleware('auth:api');
 
 //Модерация турниров
-Route::middleware('auth:api')->post('/tournament-request', [TournamentRequestController::class, 'store']); // Отправить на модерацию
-Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [TournamentRequestController::class, 'acceptRequest']); // Принять
-Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить
+Route::middleware('auth:api')->post('/tournament-request-user', [TournamentRequestController::class, 'storeUserRequest']); // Отправить на модерацию
+Route::middleware('auth:api')->post('/tournament-request-operator', [TournamentRequestController::class, 'store']); // Отправить на модерацию
+Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [TournamentRequestController::class, 'acceptRequest']); // Принять заявку организатора
+Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить заявку организатора
+Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/accept-user', [TournamentRequestController::class, 'acceptRequestUser']); // Принять заявку пользователя
+Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/reject-user', [TournamentRequestController::class, 'rejectRequestUser']); // Отклонить заявку пользователя
 
 //Уведомления
 Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
 Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration', [NotificationController::class, 'notifyTournamentRegistrationOpen']);
 Route::middleware('auth:api')->get('/notifications/unread', [NotificationController::class, 'getUnreadNotifications']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/team-invites/respond', [TeamInviteController::class, 'respondInvite']);
+});
 
 Route::post('/invite/respond', [TeamInviteController::class, 'respondInvite']);
 // Открытые маршруты (без аутентификации)
@@ -66,26 +74,23 @@ Route::prefix('guest')->group(function () {
     Route::get('/teams/{id}/members', [TeamController::class, 'getTeamMembers']);
     Route::get('/users/{id}/teams', [TeamController::class, 'getUserTeams']);
     Route::middleware('auth:sanctum')->post('/leave-team', [TeamController::class, 'leaveTeam']);
+    Route::get('/tournaments/{id}/teams', [TournamentController::class, 'getTournamentTeams']);
 });
 
 //Пользовательский функционал
 Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
-    Route::post('team-invites/{inviteId}/accept', [TeamInviteController::class, 'accept'])->middleware('auth');
-    Route::post('team-invites/{inviteId}/decline', [TeamInviteController::class, 'decline'])->middleware('auth');
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::post('/send-invite', [TeamInviteController::class, 'sendInvite']);
 });
 
+//Организаторский функционал
 Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function () {
     Route::get('team-invites', [TeamInviteController::class, 'index'])->middleware('auth');
-    Route::post('team-invites/{inviteId}/accept', [TeamInviteController::class, 'accept'])->middleware('auth');
-    Route::post('team-invites/{inviteId}/decline', [TeamInviteController::class, 'decline'])->middleware('auth');
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
-    Route::post('/tournaments/create', [TournamentController::class, 'store']);
     Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
 });
@@ -203,4 +208,10 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-elimination', [NotificationController::class, 'notifyTeamElimination']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
     Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
+    // Управление банами
+    Route::get('/bans', [BanController::class, 'index']);
+    Route::get('/bans/{id}', [BanController::class, 'show']);
+    Route::post('/bans/ban', [BanController::class, 'banUser']);
+    Route::post('/bans/{id}/update', [BanController::class, 'update']);
+    Route::post('/bans/{id}/unban', [BanController::class, 'unban']);
 });

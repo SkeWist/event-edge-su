@@ -2,138 +2,162 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Team\StoreTeamRequest;
+use App\Http\Requests\Team\UpdateTeamRequest;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 
 class TeamController extends Controller
 {
-    // Просмотр всех команд
-    public function index()
+    /**
+     * Получение списка всех команд
+     */
+    public function index(): JsonResponse
     {
         $teams = Team::all();
-        return response()->json($teams);
+        
+        return response()->json([
+            'message' => 'Список команд успешно получен',
+            'data' => $teams
+        ]);
     }
 
-    // Просмотр одной команды
-    public function show($id)
+    /**
+     * Получение информации о команде
+     */
+    public function show(int $id): JsonResponse
     {
         $team = Team::findOrFail($id);
-        return response()->json($team);
+        
+        return response()->json([
+            'message' => 'Информация о команде успешно получена',
+            'data' => $team
+        ]);
     }
-    public function getTeamMembers($teamId)
+
+    /**
+     * Получение списка участников команды
+     */
+    public function getTeamMembers(int $teamId): JsonResponse
     {
         $team = Team::with('users')->findOrFail($teamId);
 
         return response()->json([
-            'team' => $team->name,
-            'members' => $team->users->map(fn($user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ]),
+            'message' => 'Список участников команды успешно получен',
+            'data' => [
+                'team' => $team->name,
+                'members' => $team->users->map(fn($user) => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ]),
+            ]
         ]);
     }
-    public function getUserTeams($userId)
+
+    /**
+     * Получение списка команд пользователя
+     */
+    public function getUserTeams(int $userId): JsonResponse
     {
         $user = User::with('teams')->findOrFail($userId);
 
         return response()->json([
-            'user' => $user->name,
-            'teams' => $user->teams->map(fn($team) => [
-                'id' => $team->id,
-                'name' => $team->name,
-            ]),
+            'message' => 'Список команд пользователя успешно получен',
+            'data' => [
+                'user' => $user->name,
+                'teams' => $user->teams->map(fn($team) => [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                ]),
+            ]
         ]);
     }
-    // Создание новой команды
-    public function store(Request $request)
+
+    /**
+     * Создание новой команды
+     */
+    public function store(StoreTeamRequest $request): JsonResponse
     {
-        // Валидация данных
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:teams,name',
-            'captain_id' => 'required|exists:users,id', // Проверка существования капитана
-            'status' => 'required|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
-        }
-
-        // Создание команды
-        $team = Team::create([
-            'name' => $request->name,
-            'captain_id' => $request->captain_id, // Здесь передаем captain_id
-            'status' => $request->status,
-        ]);
+        $team = Team::create($request->validated());
 
         return response()->json([
             'message' => 'Команда успешно создана!',
-            'team' => $team
+            'data' => $team
         ], 201);
     }
-    // Редактирование команды
-    public function update(Request $request, $id)
-    {
-        // Валидация данных
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255|unique:teams,name,' . $id,
-            'captain_id' => 'nullable|exists:users,id', // Проверка существования капитана
-            'status' => 'nullable|string|max:255',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 400);
+    /**
+     * Обновление информации о команде
+     */
+    public function update(UpdateTeamRequest $request, int $id): JsonResponse
+    {
+        $team = Team::findOrFail($id);
+        $validatedData = $request->validated();
+        
+        // Проверяем, есть ли реальные изменения в данных
+        $hasChanges = false;
+        foreach ($validatedData as $field => $value) {
+            if ($team->$field !== $value) {
+                $hasChanges = true;
+                break;
+            }
         }
 
-        // Находим команду по ID
-        $team = Team::findOrFail($id);
+        if (!$hasChanges) {
+            return response()->json([
+                'error' => 'Нет изменений для сохранения'
+            ], 422);
+        }
 
-        // Обновляем команду
-        $team->update($request->only(['name', 'captain_id', 'status']));
+        $team->update($validatedData);
 
         return response()->json([
             'message' => 'Команда успешно обновлена!',
-            'team' => $team
+            'data' => $team
         ]);
     }
-    public function leaveTeam(Request $request)
+
+    /**
+     * Выход из команды
+     */
+    public function leaveTeam(Request $request): JsonResponse
     {
-        // Получаем текущего пользователя
         $user = auth()->user();
 
         if (!$user) {
             return response()->json(['error' => 'Пользователь не найден.'], 401);
         }
 
-        // Проверяем, есть ли активная команда
         $currentTeam = $user->teams()->wherePivot('status', 'active')->first();
 
         if (!$currentTeam) {
             return response()->json(['error' => 'Вы не состоите в команде.'], 400);
         }
 
-        // Обновляем статус в team_user
         DB::table('team_user')
             ->where('user_id', $user->id)
             ->where('team_id', $currentTeam->id)
             ->update(['status' => 'left']);
 
-        return response()->json(['message' => 'Вы успешно вышли из команды.']);
+        return response()->json([
+            'message' => 'Вы успешно вышли из команды.'
+        ]);
     }
-    // Удаление команды
-    public function destroy($id)
-    {
-        // Находим команду по ID
-        $team = Team::findOrFail($id);
 
-        // Удаляем команду
+    /**
+     * Удаление команды
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $team = Team::findOrFail($id);
         $team->delete();
 
         return response()->json([
             'message' => 'Команда успешно удалена!'
-        ]);
+        ], 204);
     }
 }

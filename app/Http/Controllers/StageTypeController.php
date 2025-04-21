@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StageType\StoreStageTypeRequest;
+use App\Http\Requests\StageType\UpdateStageTypeRequest;
 use App\Models\StageType;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class StageTypeController extends Controller
 {
     /**
-     * Создание нового типа этапа.
+     * Получение списка типов этапов
      */
-    public function index()
+    public function index(): JsonResponse
     {
         $stageTypes = StageType::select('id', 'name')->get();
 
@@ -19,61 +21,44 @@ class StageTypeController extends Controller
             'data' => $stageTypes
         ]);
     }
-    public function store(Request $request)
-    {
-        // Валидация входных данных
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
 
-        // Создание типа этапа
-        $stageType = StageType::create([
-            'name' => $request->input('name'),
-        ]);
+    /**
+     * Создание нового типа этапа
+     */
+    public function store(StoreStageTypeRequest $request): JsonResponse
+    {
+        $stageType = StageType::create($request->validated());
 
         return response()->json([
             'message' => 'Тип этапа успешно добавлен!',
             'stage_type' => $stageType
-        ], 201); // Ответ с созданным объектом
+        ], 201);
     }
 
     /**
-     * Редактирование типа этапа.
+     * Редактирование типа этапа
      */
-    public function update(Request $request, $id)
+    public function update(UpdateStageTypeRequest $request, int $id): JsonResponse
     {
-        // Валидация входных данных
-        $request->validate([
-            'name' => 'required|string|max:255',
-        ]);
-
-        // Поиск типа этапа по ID
         $stageType = StageType::findOrFail($id);
-
-        // Обновление данных
-        $stageType->update([
-            'name' => $request->input('name'),
-        ]);
+        $stageType->update($request->validated());
 
         return response()->json([
             'message' => 'Тип этапа успешно редактирован!',
             'stage_type' => $stageType
-        ]); // Ответ с обновленным объектом
+        ]);
     }
 
     /**
-     * Удаление типа этапа.
+     * Удаление типа этапа
      */
-    public function destroy($id)
+    public function destroy(int $id): JsonResponse
     {
-        // Поиск типа этапа по ID
         $stageType = StageType::findOrFail($id);
-
-        // Удаление
         $stageType->delete();
 
         return response()->json([
             'message' => 'Тип этапа успешно удален!'
-        ], 204); // Ответ без содержимого, код 204 - удалено
+        ], 204);
     }
 }

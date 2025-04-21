@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tournament;
 use App\Models\TournamentRequest;
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -20,9 +21,9 @@ class TournamentRequestController extends Controller
             'description' => 'required|string|max:1000',
             'start_date' => 'required|date_format:Y-m-d H:i:s',
             'end_date' => 'required|date_format:Y-m-d H:i:s|after:start_date',
-            'game_id' => 'required|integer',
-            'stage_id' => 'required|integer',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'game_id' => 'required|exists:games,id',
+            'stage_id' => 'nullable|exists:stages,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
             'teams' => 'nullable|array',
             'teams.*' => 'integer',
         ], [
@@ -40,8 +41,10 @@ class TournamentRequestController extends Controller
             return response()->json(['error' => 'Пользователь не авторизован.'], 401);
         }
 
-        // Обработка изображения (если оно есть)
+        // Инициализируем переменную для пути к изображению
         $imagePath = null;
+
+        // Обработка изображения (если оно есть)
         if ($request->hasFile('image')) {
             $file = $request->file('image');
 
@@ -89,17 +92,89 @@ class TournamentRequestController extends Controller
         return response()->json(['message' => 'Турнир отправлен на модерацию.'], 201);
     }
 
+    // Метод для отправки турнира на модерацию от пользователя
+    public function storeUserRequest(Request $request)
+    {
+        // Валидация данных запроса
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:1000',
+            'start_date' => 'required|date_format:Y-m-d H:i:s',
+            'end_date' => 'required|date_format:Y-m-d H:i:s|after:start_date',
+            'game_id' => 'required|exists:games,id',
+            'stage_id' => 'nullable|exists:stages,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:8192',
+            'teams' => 'nullable|array',
+            'teams.*' => 'integer',
+        ], [
+            'start_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-04-20 15:00:00)',
+            'end_date.date_format' => 'Формат даты и времени должен быть Y-m-d H:i:s (например: 2025-04-20 18:00:00)',
+        ]);
 
-    // Метод для принятия турнира (администратор)
-    public function acceptRequest($id)
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Проверяем, авторизован ли пользователь
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Пользователь не авторизован.'], 401);
+        }
+
+        $imagePath = null;
+
+        // Создаем запись в таблице tournament_requests
+        $tournamentRequest = TournamentRequest::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'game_id' => $request->game_id,
+            'stage_id' => $request->stage_id,
+            'status' => 'pending',
+            'user_id' => $userId,
+            'image' => $imagePath,
+            'teams' => $request->teams ? json_encode($request->teams) : null
+        ]);
+
+        // Уведомление админу о новом запросе
+        Notification::create([
+            'user_id' => 1, // Уведомление отправляется админу
+            'message' => "Пользователь " . Auth::user()->name . " подал заявку на создание турнира: " . $request->name,
+            'status' => 'unread',
+            'data' => json_encode([
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'description' => $tournamentRequest->description,
+                'start_date' => $tournamentRequest->start_date,
+                'end_date' => $tournamentRequest->end_date,
+                'game_id' => $tournamentRequest->game_id,
+                'stage_id' => $tournamentRequest->stage_id,
+                'status' => $tournamentRequest->status,
+                'user_id' => $tournamentRequest->user_id,
+                'image' => $tournamentRequest->image,
+                'teams' => $tournamentRequest->teams
+            ]),
+        ]);
+
+        return response()->json(['message' => 'Заявка на турнир отправлена на модерацию.'], 201);
+    }
+
+    // Метод для принятия заявки пользователя (администратор)
+    public function acceptRequestUser($id)
     {
         $tournamentRequest = TournamentRequest::find($id);
 
         if (!$tournamentRequest) {
-            return response()->json(['error' => 'Турнир не найден.'], 404);
+            return response()->json(['error' => 'Заявка не найдена.'], 404);
         }
 
-        // Создаем турнир в таблице tournaments
+        // Меняем роль пользователя на организатора
+        $user = User::find($tournamentRequest->user_id);
+        $user->role_id = 3; // ID роли организатора
+        $user->save();
+
+        // Создаем турнир
         $tournament = Tournament::create([
             'name' => $tournamentRequest->name,
             'description' => $tournamentRequest->description,
@@ -110,51 +185,127 @@ class TournamentRequestController extends Controller
             'status' => 'pending',
             'user_id' => $tournamentRequest->user_id,
             'image' => $tournamentRequest->image,
-            'teams' => $tournamentRequest->teams,
+            'teams' => $tournamentRequest->teams
         ]);
+
+        // Обновляем статус заявки
+        $tournamentRequest->update(['status' => 'approved']);
+
+        // Уведомление пользователю о принятии заявки
+        Notification::create([
+            'user_id' => $tournamentRequest->user_id,
+            'message' => "Ваша заявка на турнир '{$tournamentRequest->name}' принята. Теперь вы организатор.",
+            'status' => 'unread',
+            'data' => json_encode([
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'status' => 'approved',
+                'tournament_id' => $tournament->id
+            ]),
+        ]);
+
+        return response()->json([
+            'message' => 'Заявка принята, пользователь назначен организатором.',
+            'tournament_id' => $tournament->id
+        ], 200);
+    }
+
+    // Метод для отклонения заявки пользователя (администратор)
+    public function rejectRequestUser($id)
+    {
+        $tournamentRequest = TournamentRequest::find($id);
+
+        if (!$tournamentRequest) {
+            return response()->json(['error' => 'Заявка не найдена.'], 404);
+        }
+
+        // Обновляем статус заявки
+        $tournamentRequest->update(['status' => 'rejected']);
+
+        // Уведомление пользователю об отклонении заявки
+        Notification::create([
+            'user_id' => $tournamentRequest->user_id,
+            'message' => "Ваша заявка на турнир '{$tournamentRequest->name}' отклонена.",
+            'status' => 'unread',
+            'data' => json_encode([
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'status' => 'rejected'
+            ]),
+        ]);
+
+        return response()->json(['message' => 'Заявка отклонена.'], 200);
+    }
+
+    // Метод для принятия турнира организатора (администратор)
+    public function acceptRequest($id)
+    {
+        $tournamentRequest = TournamentRequest::find($id);
+
+        if (!$tournamentRequest) {
+            return response()->json(['error' => 'Заявка не найдена.'], 404);
+        }
+
+        // Создаем турнир
+        $tournament = Tournament::create([
+            'name' => $tournamentRequest->name,
+            'description' => $tournamentRequest->description,
+            'start_date' => $tournamentRequest->start_date,
+            'end_date' => $tournamentRequest->end_date,
+            'game_id' => $tournamentRequest->game_id,
+            'stage_id' => $tournamentRequest->stage_id,
+            'status' => 'pending',
+            'user_id' => $tournamentRequest->user_id,
+            'image' => $tournamentRequest->image,
+            'teams' => $tournamentRequest->teams
+        ]);
+
+        // Обновляем статус заявки
+        $tournamentRequest->update(['status' => 'approved']);
 
         // Уведомление организатору о принятии турнира
         Notification::create([
             'user_id' => $tournamentRequest->user_id,
-            'message' => "Ваш турнир '{$tournamentRequest->name}' принят и добавлен в систему.",
+            'message' => "Ваш турнир '{$tournamentRequest->name}' принят.",
             'status' => 'unread',
-            'data' => json_encode($tournamentRequest->only([
-                'id', 'name', 'description', 'start_date', 'end_date',
-                'game_id', 'stage_id', 'status', 'user_id', 'image', 'teams'
-            ])),
-            'type' => 'tournament_accepted', // Тип уведомления
+            'data' => json_encode([
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'status' => 'approved',
+                'tournament_id' => $tournament->id
+            ]),
         ]);
 
-        // Удаляем запрос на турнир из таблицы tournament_requests
-        $tournamentRequest->delete();
-
-        return response()->json(['message' => 'Турнир принят и добавлен в систему.'], 200);
+        return response()->json([
+            'message' => 'Турнир принят.',
+            'tournament_id' => $tournament->id
+        ], 200);
     }
 
-    // Метод для отклонения турнира (администратор)
+    // Метод для отклонения турнира организатора (администратор)
     public function rejectRequest($id)
     {
         $tournamentRequest = TournamentRequest::find($id);
 
         if (!$tournamentRequest) {
-            return response()->json(['error' => 'Турнир не найден.'], 404);
+            return response()->json(['error' => 'Заявка не найдена.'], 404);
         }
 
-        // Уведомление организатору о отклонении турнира
+        // Обновляем статус заявки
+        $tournamentRequest->update(['status' => 'rejected']);
+
+        // Уведомление организатору об отклонении турнира
         Notification::create([
             'user_id' => $tournamentRequest->user_id,
-            'message' => "Ваш турнир '{$tournamentRequest->name}' был отклонен.",
+            'message' => "Ваш турнир '{$tournamentRequest->name}' отклонен.",
             'status' => 'unread',
-            'data' => json_encode($tournamentRequest->only([
-                'id', 'name', 'description', 'start_date', 'end_date',
-                'game_id', 'stage_id', 'status', 'user_id', 'image', 'teams'
-            ])),
-            'type' => 'tournament_rejected', // Тип уведомления
+            'data' => json_encode([
+                'id' => $tournamentRequest->id,
+                'name' => $tournamentRequest->name,
+                'status' => 'rejected'
+            ]),
         ]);
 
-        // Удаляем запрос на турнир из таблицы tournament_requests
-        $tournamentRequest->delete();
-
-        return response()->json(['message' => 'Турнир отклонен и удален из системы.'], 200);
+        return response()->json(['message' => 'Турнир отклонен.'], 200);
     }
 }
