@@ -50,7 +50,7 @@ class TournamentController extends Controller
     public function store(StoreTournamentRequest $request): JsonResponse
     {
         $data = $request->validated();
-        
+
         // Убедимся, что статус установлен
         if (!isset($data['status']) || empty($data['status'])) {
             $data['status'] = 'pending';
@@ -58,7 +58,7 @@ class TournamentController extends Controller
 
         // Устанавливаем user_id из аутентифицированного пользователя
         $data['user_id'] = auth()->id();
-        
+
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('tournaments', 'public');
             $data['image'] = $path;
@@ -84,10 +84,26 @@ class TournamentController extends Controller
     }
 
     // Просмотр одного турнира
-    public function show(Tournament $tournament): JsonResponse
+    public function show($id): JsonResponse
     {
-        $tournament->load(['game', 'stage', 'organizer']);
-        return response()->json($tournament);
+        $tournament = Tournament::with(['game', 'stage', 'organizer'])->find($id);
+
+        \Log::info('Tournament loaded with relations', ['tournament' => $tournament->toArray()]);
+
+        return response()->json([
+            'id' => $tournament->id,
+            'name' => $tournament->name,
+            'description' => $tournament->description,
+            'start_date' => $tournament->start_date,
+            'end_date' => $tournament->end_date,
+            'views_count' => $tournament->views_count,
+            'status' => $tournament->status,
+            'status_name' => $this->getStatusName($tournament->status),
+            'game' => $tournament->game,
+            'stage' => $tournament->stage,
+            'organizer' => $tournament->organizer,
+            'image' => $tournament->image ? asset('storage/' . $tournament->image) : null
+        ]);
     }
 
     public function addTeam(Request $request, $tournamentId)
@@ -165,6 +181,7 @@ class TournamentController extends Controller
                 'game' => $tournament->game->name ?? 'Неизвестная игра', // Имя игры
                 'stage' => $tournament->stage->name ?? 'Без стадии', // Имя стадии
                 'status_name' => $statusNames[$tournament->status] ?? 'Без статуса', // Перевод статуса
+                'image' => $tournament->image ? asset('storage/' . $tournament->image) : null
             ];
         });
 
@@ -175,18 +192,18 @@ class TournamentController extends Controller
     {
         try {
             \Log::info('Updating tournament', ['id' => $id, 'request_data' => $request->all()]);
-            
+
             $data = $request->validated();
             \Log::info('Validated data', $data);
-            
+
             // Проверяем существование турнира
             $tournament = Tournament::where('id', $id)->first();
-            
+
             if (!$tournament) {
                 \Log::error('Tournament not found', ['id' => $id]);
                 return response()->json(['error' => 'Турнир не найден'], 404);
             }
-            
+
             \Log::info('Found tournament', $tournament->toArray());
 
             if ($request->hasFile('image')) {
@@ -200,11 +217,11 @@ class TournamentController extends Controller
 
             $tournament->update($data);
             \Log::info('Tournament after update', $tournament->toArray());
-            
+
             // Обновляем модель и загружаем связи
             $tournament->refresh();
             $tournament->load(['game', 'stage', 'organizer']);
-            
+
             \Log::info('Tournament after refresh', $tournament->toArray());
 
             $response = [
@@ -220,9 +237,9 @@ class TournamentController extends Controller
                 'organizer' => $tournament->organizer,
                 'image' => $tournament->image ? asset('storage/' . $tournament->image) : null
             ];
-            
+
             \Log::info('Response', $response);
-            
+
             return response()->json($response);
         } catch (\Exception $e) {
             \Log::error('Update error', [
@@ -534,7 +551,7 @@ class TournamentController extends Controller
         if ($tournament->image) {
             Storage::disk('public')->delete($tournament->image);
         }
-        
+
         $tournament->delete();
         return response()->json(null, 204);
     }
