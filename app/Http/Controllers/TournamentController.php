@@ -116,9 +116,13 @@ class TournamentController extends Controller
     {
         $tournament = Tournament::with(['game', 'stage', 'organizer'])->find($id);
 
-        
-        // Увеличиваем счетчик просмотров
-        $tournament->increment('views_count');
+        if (!$tournament) {
+            return response()->json(['error' => 'Турнир не найден'], 404);
+        }
+
+        // Увеличиваем счетчик просмотров и сохраняем
+        $tournament->views_count = $tournament->views_count + 1;
+        $tournament->save();
 
         \Log::info('Tournament loaded with relations', ['tournament' => $tournament->toArray()]);
 
@@ -578,14 +582,29 @@ class TournamentController extends Controller
         return response()->json($statistics);
     }
     // Удаление турнира
-    public function destroy(Tournament $tournament): JsonResponse
+    public function destroy($id): JsonResponse
     {
-        if ($tournament->image) {
-            Storage::disk('public')->delete($tournament->image);
-        }
+        try {
+            $tournament = Tournament::find($id);
+            
+            if (!$tournament) {
+                return response()->json(['error' => 'Турнир не найден'], 404);
+            }
 
-        $tournament->delete();
-        return response()->json(null, 204);
+            if ($tournament->image) {
+                Storage::disk('public')->delete($tournament->image);
+            }
+
+            $tournament->delete();
+            
+            return response()->json(['message' => 'Турнир успешно удален'], 200);
+        } catch (\Exception $e) {
+            \Log::error('Ошибка при удалении турнира', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['error' => 'Не удалось удалить турнир'], 500);
+        }
     }
     public function myTournaments(Request $request)
     {
