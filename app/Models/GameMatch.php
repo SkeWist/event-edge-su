@@ -15,6 +15,11 @@ class GameMatch extends Model
         return $this->belongsTo(Game::class);
     }
 
+    public function tournament()
+    {
+        return $this->belongsTo(Tournament::class);
+    }
+
     public function teamA()
     {
         return $this->belongsTo(Team::class, 'team_1_id'); // Предположим, что команда A связана с team_1_id

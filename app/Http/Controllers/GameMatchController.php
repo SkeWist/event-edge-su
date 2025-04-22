@@ -16,17 +16,19 @@ class GameMatchController extends Controller
      */
     public function index(): JsonResponse
     {
-        $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->get()
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+        $matches = GameMatch::with(['game', 'teamA', 'teamB', 'stage', 'tournament.game'])->get()
+            ->makeHidden(['game_id', 'created_at', 'updated_at']);
 
         $matches->each(function ($match) {
-            $match->game_name = $match->game->name ?? 'Неизвестная игра';
+            $match->game_name = $match->tournament->game->name ?? 'Неизвестная игра';
             $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+            $match->team_1_id = $match->teamA->id ?? null;
             $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+            $match->team_2_id = $match->teamB->id ?? null;
             $match->stage_name = $match->stage->name ?? 'Этап не указан';
             $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
 
-            unset($match->game, $match->teamA, $match->teamB, $match->stage);
+            unset($match->game, $match->teamA, $match->teamB, $match->stage, $match->tournament);
         });
 
         return response()->json($matches);
@@ -37,16 +39,18 @@ class GameMatchController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage'])->findOrFail($id)
-            ->makeHidden(['game_id', 'team_1_id', 'team_2_id', 'created_at', 'updated_at']);
+        $match = GameMatch::with(['game', 'teamA', 'teamB', 'stage', 'tournament.game'])->findOrFail($id)
+            ->makeHidden(['game_id', 'created_at', 'updated_at']);
 
-        $match->game_name = $match->game->name ?? 'Неизвестная игра';
+        $match->game_name = $match->tournament->game->name ?? 'Неизвестная игра';
         $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+        $match->team_1_id = $match->teamA->id ?? null;
         $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+        $match->team_2_id = $match->teamB->id ?? null;
         $match->stage_name = $match->stage->name ?? 'Этап не указан';
         $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
 
-        unset($match->game, $match->teamA, $match->teamB, $match->stage);
+        unset($match->game, $match->teamA, $match->teamB, $match->stage, $match->tournament);
 
         return response()->json($match);
     }
@@ -159,7 +163,9 @@ class GameMatchController extends Controller
             return $matches->map(function ($match) {
                 $match->game_name = $match->game->name ?? 'Неизвестная игра';
                 $match->team_1_name = $match->teamA->name ?? 'Неизвестная команда';
+                $match->team_1_id = $match->teamA->id ?? null;
                 $match->team_2_name = $match->teamB->name ?? 'Неизвестная команда';
+                $match->team_2_id = $match->teamB->id ?? null;
                 $match->stage_name = $match->stage->name ?? 'Этап не указан';
                 $match->winner_team_name = $match->winnerTeam->name ?? null;
                 $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');

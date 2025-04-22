@@ -116,6 +116,9 @@ class TournamentController extends Controller
     {
         $tournament = Tournament::with(['game', 'stage', 'organizer'])->find($id);
 
+        // Увеличиваем счетчик просмотров
+        $tournament->increment('views_count');
+
         \Log::info('Tournament loaded with relations', ['tournament' => $tournament->toArray()]);
 
         return response()->json([
