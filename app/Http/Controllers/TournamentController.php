@@ -116,6 +116,7 @@ class TournamentController extends Controller
     {
         $tournament = Tournament::with(['game', 'stage', 'organizer'])->find($id);
 
+        
         // Увеличиваем счетчик просмотров
         $tournament->increment('views_count');
 
