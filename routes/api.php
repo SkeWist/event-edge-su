@@ -24,6 +24,7 @@ Route::get('/user', function (Request $request) {
 // Авторизация
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
+Route::post('refresh', [AuthController::class, 'refresh']);
 Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 
 //Профиль
@@ -42,7 +43,7 @@ Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [Tourname
 Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить заявку организатора
 Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/accept-user', [TournamentRequestController::class, 'acceptRequestUser']); // Принять заявку пользователя
 Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/reject-user', [TournamentRequestController::class, 'rejectRequestUser']); // Отклонить заявку пользователя
-
+Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
 //Уведомления
 Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
 Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration', [NotificationController::class, 'notifyTournamentRegistrationOpen']);
@@ -63,8 +64,8 @@ Route::prefix('guest')->group(function () {
     Route::get('/game-matches/{id}', [GameMatchController::class, 'show']);
     Route::get('/stages', [StageController::class, 'index']);
     Route::get('/stages/{id}', [StageController::class, 'show']);
-    Route::get('/news-feeds', [NewsFeedController::class, 'index']);
-    Route::get('/news-feeds/{id}', [NewsFeedController::class, 'show']);
+  Route::get('/news-feeds', [NewsFeedController::class, 'index']); // Список новостей
+  Route::get('/news-feeds/{slug}', [NewsFeedController::class, 'show']); // Просмотр новости
     Route::get('/games', [GameController::class, 'index']);
     Route::get('/games/{id}', [GameController::class, 'show']);
     Route::get('/stage-type', [StageTypeController::class, 'index']);
@@ -79,6 +80,8 @@ Route::prefix('guest')->group(function () {
 
 //Пользовательский функционал
 Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
+    Route::post('team-invites/{inviteId}/accept', [TeamInviteController::class, 'accept'])->middleware('auth');
+    Route::post('team-invites/{inviteId}/decline', [TeamInviteController::class, 'decline'])->middleware('auth');
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);

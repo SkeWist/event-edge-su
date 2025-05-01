@@ -61,7 +61,7 @@ class GameMatchController extends Controller
     public function store(StoreGameMatchRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        
+
         try {
             $match_date = Carbon::createFromFormat('Y-m-d\TH:i', $validated['match_date'])
                 ->format('Y-m-d H:i:s');
@@ -169,7 +169,7 @@ class GameMatchController extends Controller
                 $match->stage_name = $match->stage->name ?? 'Этап не указан';
                 $match->winner_team_name = $match->winnerTeam->name ?? null;
                 $match->match_date = Carbon::parse($match->match_date)->format('Y-m-d H:i');
-                
+
                 return $match->makeHidden([
                     'game_id', 'team_1_id', 'team_2_id', 'winner_team_id',
                     'created_at', 'updated_at',
