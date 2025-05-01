@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('status');
             $table->timestamp('published_at')->nullable(); // Дата и время публикации
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade'); // Пользователь, который опубликовал новость
+            $table->string('image')->nullable();
             $table->timestamps(); // Время создания и обновления
         });
     }

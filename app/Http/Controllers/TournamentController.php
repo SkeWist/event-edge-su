@@ -59,6 +59,7 @@ class TournamentController extends Controller
         return match ($status) {
             'pending' => 'Ожидается',
             'ongoing' => 'В процессе',
+            'current' => 'Текущий',
             'completed' => 'Завершен',
             'canceled' => 'Отменен',
             'registrationOpen' => 'Регистрация открыта',
@@ -199,6 +200,7 @@ class TournamentController extends Controller
         $statusNames = [
             'pending' => 'Ожидание',
             'ongoing' => 'В процессе',
+            'current' => 'Текущий',
             'completed' => 'Завершен',
             'canceled' => 'Отменен',
             'registrationOpen' => 'Регистрация открыта',
@@ -562,6 +564,7 @@ class TournamentController extends Controller
         $message = match ($validated['status']) {
             'pending' => 'Турнир "' . $tournament->name . '" вот-вот начнётся!',
             'ongoing' => 'Турнир "' . $tournament->name . '" начался!',
+            'current' => 'Турнир "' . $tournament->name . '" сейчас идёт!',
             'canceled' => 'Турнир "' . $tournament->name . '" был отменён.',
             'completed' => 'Турнир "' . $tournament->name . '" завершён!',
         };

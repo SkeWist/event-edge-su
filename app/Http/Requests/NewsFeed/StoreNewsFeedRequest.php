@@ -19,6 +19,7 @@ class StoreNewsFeedRequest extends FormRequest
             'status' => 'required|string',
             'published_at' => 'nullable|date',
             'user_id' => 'required|exists:users,id',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:8192',
         ];
     }
 
@@ -32,6 +33,9 @@ class StoreNewsFeedRequest extends FormRequest
             'published_at.date' => 'Неверный формат даты публикации',
             'user_id.required' => 'Необходимо указать автора новости',
             'user_id.exists' => 'Указанный автор не существует',
+            'image.image' => 'Файл должен быть изображением',
+            'image.mimes' => 'Допустимые форматы изображения: jpeg, png, jpg, gif',
+            'image.max' => 'Размер изображения не должен превышать 8MB'
         ];
     }
-} 
+}

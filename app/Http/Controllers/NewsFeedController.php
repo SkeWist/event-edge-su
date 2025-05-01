@@ -6,6 +6,7 @@ use App\Http\Requests\NewsFeed\StoreNewsFeedRequest;
 use App\Http\Requests\NewsFeed\UpdateNewsFeedRequest;
 use App\Models\NewsFeed;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class NewsFeedController extends Controller
 {
@@ -45,6 +46,13 @@ class NewsFeedController extends Controller
     public function store(StoreNewsFeedRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('news_images', 'public');
+            $validated['image'] = $path;
+        }
+
         $newsFeed = NewsFeed::create($validated);
 
         return response()->json([
@@ -61,6 +69,16 @@ class NewsFeedController extends Controller
         $newsFeed = NewsFeed::findOrFail($id);
         $validated = $request->validated();
 
+        // Handle image update
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            $newsFeed->deleteImage();
+            
+            // Store new image
+            $path = $request->file('image')->store('news_images', 'public');
+            $validated['image'] = $path;
+        }
+
         $newsFeed->update(array_filter($validated, fn($value) => $value !== null));
 
         return response()->json([
@@ -75,10 +93,14 @@ class NewsFeedController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $newsFeed = NewsFeed::findOrFail($id);
+        
+        // Delete associated image
+        $newsFeed->deleteImage();
+        
         $newsFeed->delete();
 
         return response()->json([
-            'message' => 'Новость успешно удалена!',
-        ], 204);
+            'message' => 'Новость успешно удалена!'
+        ]);
     }
 }

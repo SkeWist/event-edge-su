@@ -83,6 +83,7 @@ Route::middleware(['auth:api', 'role:4'])->prefix('user')->group(function () {
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::post('/send-invite', [TeamInviteController::class, 'sendInvite']);
+    Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
 });
 
 //Организаторский функционал
@@ -91,8 +92,8 @@ Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function ()
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('auth');
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
-    Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
+    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
 });
 
 //Админский функционал
@@ -206,8 +207,6 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::middleware( 'auth:api')->post('/match/{id}/notify-result', [NotificationController::class, 'notifyMatchResult']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-next-stage', [NotificationController::class, 'notifyNextStage']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-elimination', [NotificationController::class, 'notifyTeamElimination']);
-    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
-    Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
     // Управление банами
     Route::get('/bans', [BanController::class, 'index']);
     Route::get('/bans/{id}', [BanController::class, 'show']);
