@@ -16,6 +16,7 @@ class NotifyTournamentRegistrationRequest extends FormRequest
         return [
             'tournament_id' => 'required|exists:tournaments,id',
             'team_id' => 'required|exists:teams,id',
+            'message' => 'nullable|string|max:500'
         ];
     }
 
@@ -28,4 +29,4 @@ class NotifyTournamentRegistrationRequest extends FormRequest
             'team_id.exists' => 'Указанная команда не существует',
         ];
     }
-} 
+}

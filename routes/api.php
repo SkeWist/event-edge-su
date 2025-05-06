@@ -93,8 +93,9 @@ Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function ()
     Route::get('notifications/{id}', [NotificationController::class, 'show'])->middleware('auth');
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
-    Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
     Route::get('/tournament-requests/list', [TournamentRequestController::class, 'index']);
+    Route::middleware('auth:api')->post('/team-tournament-request/{id}/accept', [NotificationController::class, 'acceptTeamRegistration']);
+    Route::middleware('auth:api')->post('/team-tournament-request/{id}/reject', [NotificationController::class, 'rejectTeamRegistration']);
 });
 
 //Админский функционал
