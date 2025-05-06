@@ -94,6 +94,7 @@ Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function ()
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-team-registration-accept', [NotificationController::class, 'acceptTeamRegistration']);
+    Route::get('/tournament-requests/list', [TournamentRequestController::class, 'index']);
 });
 
 //Админский функционал
@@ -187,6 +188,8 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::delete('/tournaments/{tournamentId}/matches/{matchId}', [TournamentController::class, 'removeMatchFromTournament']);
     // Роут для отправки уведомлений (Обновление статуса турнира)
     Route::post('/tournaments/{tournamentId}/status', [TournamentController::class, 'updateTournamentStatus']);
+    // Роут для просмотра списка заявок на турнир
+    Route::get('/tournament-requests/list', [TournamentRequestController::class, 'index']);
     // Роут для обновления турнирной сетки
     Route::post('/basket/update', [TournamentController::class, 'updateBasketResults']);
     // Роут для создания стадии

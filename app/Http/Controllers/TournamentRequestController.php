@@ -107,7 +107,36 @@ class TournamentRequestController extends Controller
             ]
         ], 201);
     }
+    public function index()
+    {
+        // Получаем все заявки на турниры с пагинацией
+        $tournamentRequests = TournamentRequest::orderBy('created_at', 'desc')->get();
 
+        // Форматируем данные для ответа
+        $formattedRequests = $tournamentRequests->map(function ($request) {
+            return [
+                'id' => $request->id,
+                'name' => $request->name,
+                'description' => $request->description,
+                'start_date' => Carbon::parse($request->start_date)->format('Y-m-d H:i'),
+                'end_date' => Carbon::parse($request->end_date)->format('Y-m-d H:i'),
+                'game_id' => $request->game_id,
+                'stage_id' => $request->stage_id,
+                'status' => $request->status,
+                'user_id' => $request->user_id,
+                'user_name' => $request->user->name ?? 'Неизвестный пользователь',
+                'image' => $request->image ? asset('storage/' . $request->image) : null,
+                'teams' => $request->teams ? json_decode($request->teams) : null,
+                'created_at' => Carbon::parse($request->created_at)->format('Y-m-d H:i'),
+                'updated_at' => Carbon::parse($request->updated_at)->format('Y-m-d H:i'),
+            ];
+        });
+
+        return response()->json([
+            'tournament_requests' => $formattedRequests,
+            'total' => $tournamentRequests->count()
+        ], 200);
+    }
     // Метод для отправки турнира на модерацию от пользователя
     public function storeUserRequest(Request $request)
     {
