@@ -87,28 +87,33 @@ class NewsFeedController extends Controller
     /**
      * Создание новости.
      */
-    public function store(StoreNewsFeedRequest $request): JsonResponse
-    {
-        $validated = $request->validated();
+  public function store(StoreNewsFeedRequest $request): JsonResponse
+  {
+    $validated = $request->validated();
 
-        // Генерация slug
-        $validated['slug'] = Str::slug($validated['title']);
-
-        // Установка текущего пользователя
-        $validated['user_id'] = auth()->id();
-
-        // Обработка изображения
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('news', 'public');
-        }
-
-        $newsFeed = NewsFeed::create($validated);
-
-        return response()->json([
-            'message' => 'Новость успешно создана!',
-            'news_feed' => $newsFeed->load(['user', 'category']),
-        ], 201);
+    // Автоматическая установка published_at для опубликованных новостей
+    if ($validated['status'] === NewsFeed::STATUS_PUBLISHED && empty($validated['published_at'])) {
+      $validated['published_at'] = now();
     }
+
+    // Генерация slug
+    $validated['slug'] = Str::slug($validated['title']);
+
+    // Установка автора
+    $validated['user_id'] = auth()->id();
+
+    // Обработка изображения
+    if ($request->hasFile('image')) {
+      $validated['image'] = $request->file('image')->store('news', 'public');
+    }
+
+    $newsFeed = NewsFeed::create($validated);
+
+    return response()->json([
+      'message' => 'Новость успешно создана!',
+      'news_feed' => $newsFeed->load(['user', 'category']),
+    ], 201);
+  }
 
     /**
      * Редактирование новости.

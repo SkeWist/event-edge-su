@@ -39,8 +39,7 @@ Route::get('/my-tournaments', [TournamentController::class, 'myTournaments'])->m
 //Модерация турниров
 Route::middleware('auth:api')->post('/tournament-request-user', [TournamentRequestController::class, 'storeUserRequest']); // Отправить на модерацию
 Route::middleware('auth:api')->post('/tournament-request-operator', [TournamentRequestController::class, 'store']); // Отправить на модерацию
-Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [TournamentRequestController::class, 'acceptRequest']); // Принять заявку организатора
-Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить заявку организатора
+
 Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/accept-user', [TournamentRequestController::class, 'acceptRequestUser']); // Принять заявку пользователя
 Route::middleware(['auth:api', 'role:1'])->post('/tournament-request/{id}/reject-user', [TournamentRequestController::class, 'rejectRequestUser']); // Отклонить заявку пользователя
 Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
@@ -96,10 +95,14 @@ Route::middleware(['auth:api', 'role:3'])->prefix('operator')->group(function ()
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     Route::middleware( 'auth:api')->post('/tournament/notify-registration', [NotificationController::class, 'notifyTournamentRegistration']);
     Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration-closed', [NotificationController::class, 'notifyRegistrationClosed']);
+  Route::get('/tournament-requests/list', [TournamentRequestController::class, 'index']);
 });
 
 //Админский функционал
 Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
+  Route::post('/news-feeds/create', [NewsFeedController::class, 'store']);
+  Route::post('/news-feeds/update/{id}', [NewsFeedController::class, 'update']);
+  Route::delete('/news-feeds/delete/{id}', [NewsFeedController::class, 'destroy']);
     // Просмотр списка турниров
     Route::get('/tournaments', [TournamentController::class, 'index']);
     // Просмотр турнира
@@ -114,6 +117,9 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     Route::post('/tournaments/addTeam/{id}', [TournamentController::class, 'addTeam']);
     // Удаление команды из турнира
     Route::delete('/tournaments/removeTeam/{tournamentId}/{teamId}', [TournamentController::class, 'removeTeam']);
+  Route::get('/tournament-requests/list', [TournamentRequestController::class, 'index']);
+  Route::middleware('auth:api')->post('/tournament-request/{id}/accept', [TournamentRequestController::class, 'acceptRequest']); // Принять заявку организатора
+  Route::middleware('auth:api')->post('/tournament-request/{id}/reject', [TournamentRequestController::class, 'rejectRequest']); // Отклонить заявку организатора
     // Топ 10 популярных турниров
     Route::get('/popular-tournaments', [TournamentController::class, 'popularTournaments']);
     // Просмотр команды по ID

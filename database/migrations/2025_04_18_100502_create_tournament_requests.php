@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->date('end_date')->nullable();
             $table->unsignedBigInteger('game_id');
-            $table->unsignedBigInteger('stage_id')->nullable();
+            $table->unsignedBigInteger('stage_type_id')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->unsignedBigInteger('user_id');
             $table->string('image')->nullable();
@@ -26,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('game_id')->references('id')->on('games');
-            $table->foreign('stage_id')->references('id')->on('stages');
+            $table->foreign('stage_type_id')->references('id')->on('stage_types');
             $table->foreign('user_id')->references('id')->on('users');
         });
     }
