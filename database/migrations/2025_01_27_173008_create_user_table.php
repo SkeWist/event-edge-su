@@ -20,6 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('role_id')->default(4);
             $table->string('avatar')->nullable();
             $table->text('api_token')->nullable(); // Добавляем поле для токена
+            $table->string('refresh_token', 255)->nullable();
             $table->rememberToken();
             $table->timestamps();
         });

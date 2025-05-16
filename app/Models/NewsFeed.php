@@ -2,44 +2,68 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 class NewsFeed extends Model
 {
-    use HasFactory;
+    use SoftDeletes; // Мягкое удаление
 
     protected $fillable = [
         'title',
+        'slug',
         'description',
+        'content',
         'status',
         'published_at',
+        'archived_at',
         'user_id',
-        'image'
+        'category_id',
+        'image',
+        'meta_title',
+        'meta_description',
+        'is_featured',
+    ];
+
+    protected $dates = [
+        'published_at',
+        'archived_at',
+        'deleted_at',
     ];
 
     protected $casts = [
-        'published_at' => 'datetime'
+        'is_featured' => 'boolean',
     ];
 
+    // Статусы для удобного доступа
+    const STATUS_DRAFT = 'draft';
+    const STATUS_PUBLISHED = 'published';
+    const STATUS_ARCHIVED = 'archived';
+
+    // Автоматическое создание slug при сохранении
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            $model->slug = Str::slug($model->title);
+        });
+
+        static::updating(function ($model) {
+            if ($model->isDirty('title')) {
+                $model->slug = Str::slug($model->title);
+            }
+        });
+    }
+
+    // Связи
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function getImageUrlAttribute()
+    public function category()
     {
-        if ($this->image) {
-            return Storage::url($this->image);
-        }
-        return null;
-    }
-
-    public function deleteImage()
-    {
-        if ($this->image && Storage::exists($this->image)) {
-            Storage::delete($this->image);
-        }
+        return $this->belongsTo(NewsCategory::class);
     }
 }

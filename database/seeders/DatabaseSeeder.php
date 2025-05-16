@@ -37,11 +37,13 @@ class DatabaseSeeder extends Seeder
         // Создание участников
         $this->call(ParticipantSeeder::class);
         // Создание новостей
+        $this->call(NewsCategoriesSeeder::class);
         $this->call(NewsFeedSeeder::class);
         // Создание игровых матчей
         $this->call(GameMatchSeeder::class);
         // Создание турнирной сетки
         $this->call(TournamentsBasketSeeder::class);
         $this->call(TeamUserSeeder::class);
+
     }
 }

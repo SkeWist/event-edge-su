@@ -22,7 +22,7 @@ class TournamentsTableSeeder extends Seeder
                 'stage_id' => 1,
                 'views_count' => 0,
                 'status' => 'pending',
-                'image' => 'tournament_images/1.jpg',
+                'image' => 'tournament_images/2.jpg',
                 'created_at' => now()->format('Y-m-d H:i'),
                 'updated_at' => now()->format('Y-m-d H:i'),
             ],

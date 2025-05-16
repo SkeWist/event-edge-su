@@ -17,7 +17,8 @@ class TournamentRequest extends Model
         'start_date',
         'end_date',
         'game_id',
-        'stage_id',
+        'stage_type_id',
+
         'status',
         'request_type',
         'image',
@@ -38,9 +39,9 @@ class TournamentRequest extends Model
     }
 
     // Связь с таблицей стадий
-    public function stage()
+    public function stageType()
     {
-        return $this->belongsTo(Stage::class);
+        return $this->belongsTo(StageType::class);
     }
 
     // Связь с пользователем (организатором турнира)

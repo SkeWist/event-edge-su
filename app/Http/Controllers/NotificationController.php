@@ -405,55 +405,91 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'Уведомления отправлены участникам команды.']);
     }
-    public function notifyTournamentRegistration(NotifyTournamentRegistrationRequest $request): JsonResponse
-    {
-        $userId = Auth::id();
-        $tournament = Tournament::findOrFail($request->tournament_id);
+  public function notifyTournamentRegistration(NotifyTournamentRegistrationRequest $request): JsonResponse
+  {
+    $userId = Auth::id();
+    $tournament = Tournament::findOrFail($request->tournament_id);
 
-        // Находим команду пользователя
-        $teamUser = DB::table('team_user')->where('user_id', $userId)->first();
-        if (!$teamUser) {
-            return response()->json(['error' => 'Вы не состоите ни в одной команде'], 400);
-        }
-        $teamId = $teamUser->team_id;
+    // Находим команду пользователя с названием
+    $teamUser = DB::table('team_user')
+      ->join('teams', 'team_user.team_id', '=', 'teams.id')
+      ->where('team_user.user_id', $userId)
+      ->select('team_user.team_id', 'teams.name as team_name')
+      ->first();
 
-        // Проверяем, не подана ли уже заявка
-        if (DB::table('team_tournament_requests')->where('team_id', $teamId)->where('tournament_id', $tournament->id)->exists()) {
-            return response()->json(['error' => 'Заявка уже существует'], 422);
-        }
-        // Проверяем, не участвует ли уже команда в турнире
-        if (DB::table('tournament_teams')->where('team_id', $teamId)->where('tournament_id', $tournament->id)->exists()) {
-            return response()->json(['error' => 'Команда уже участвует в турнире'], 422);
-        }
-
-        DB::beginTransaction();
-        try {
-            // Создаём заявку
-            DB::table('team_tournament_requests')->insert([
-                'team_id' => $teamId,
-                'tournament_id' => $tournament->id,
-                'status' => 'pending',
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-            // Уведомление организатору
-            Notification::create([
-                'user_id' => $tournament->user_id,
-                'message' => "Команда #$teamId подала заявку на участие в турнире {$tournament->name}",
-                'status' => 'unread',
-                'data' => json_encode([
-                    'type' => 'tournament_registration',
-                    'team_id' => $teamId,
-                    'tournament_id' => $tournament->id
-                ])
-            ]);
-            DB::commit();
-            return response()->json(['message' => 'Заявка отправлена']);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Ошибка при отправке заявки'], 500);
-        }
+    if (!$teamUser) {
+      return response()->json(['error' => 'Вы не состоите ни в одной команде'], 400);
     }
+
+    $teamId = $teamUser->team_id;
+    $teamName = $teamUser->team_name;
+
+    // Проверяем, не подана ли уже заявка
+    if (DB::table('team_tournament_requests')->where('team_id', $teamId)->where('tournament_id', $tournament->id)->exists()) {
+      return response()->json(['error' => 'Заявка уже существует'], 422);
+    }
+
+    // Проверяем, не участвует ли уже команда в турнире
+    if (DB::table('tournament_teams')->where('team_id', $teamId)->where('tournament_id', $tournament->id)->exists()) {
+      return response()->json(['error' => 'Команда уже участвует в турнире'], 422);
+    }
+
+    DB::beginTransaction();
+    try {
+      // Создаём заявку
+      DB::table('team_tournament_requests')->insert([
+        'team_id' => $teamId,
+        'tournament_id' => $tournament->id,
+        'status' => 'pending',
+        'created_at' => now(),
+        'updated_at' => now()
+      ]);
+
+      // Уведомление организатору с названием команды вместо ID
+      Notification::create([
+        'user_id' => $tournament->user_id,
+        'message' => "Команда '{$teamName}' подала заявку на участие в турнире '{$tournament->name}'",
+        'status' => 'unread',
+        'data' => json_encode([
+          'type' => 'tournament_registration',
+          'team_id' => $teamId,
+          'team_name' => $teamName, // Добавляем название команды в данные
+          'tournament_id' => $tournament->id
+        ])
+      ]);
+
+      DB::commit();
+      return response()->json(['message' => 'Заявка отправлена']);
+    } catch (\Exception $e) {
+      DB::rollBack();
+      return response()->json(['error' => 'Ошибка при отправке заявки'], 500);
+    }
+  }
+  public function listTournamentRequests($tournamentId): JsonResponse
+  {
+    // Проверяем, что турнир существует
+    $tournament = Tournament::find($tournamentId);
+    if (!$tournament) {
+      return response()->json(['error' => 'Турнир не найден'], 404);
+    }
+
+    // Получаем заявки на этот турнир
+    $requests = DB::table('team_tournament_requests as ttr')
+      ->join('teams as t', 't.id', '=', 'ttr.team_id')
+      ->where('ttr.tournament_id', $tournamentId)
+      ->select([
+        'ttr.id',
+        'ttr.team_id',
+        't.name as team_name',
+        'ttr.status',
+        'ttr.created_at',
+        'ttr.updated_at'
+      ])
+      ->orderByDesc('ttr.created_at')
+      ->get();
+
+    return response()->json(['requests' => $requests]);
+  }
     public function acceptTeamRegistration(int $requestId): JsonResponse
     {
         $request = DB::table('team_tournament_requests')->where('id', $requestId)->first();

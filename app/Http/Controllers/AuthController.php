@@ -5,14 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use App\Http\Requests\AuthRequest;
-use App\Http\Requests\LoginRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    // Регистрация нового пользователя
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -25,27 +24,17 @@ class AuthController extends Controller
             return response()->json(['error' => $validator->errors()], 400);
         }
 
-        // Генерируем токен один раз
-        $token = Str::random(60);
-
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role_id' => 4,
-            'api_token' => $token, // Сохраняем токен
         ]);
 
-        return response()->json([
-            'message' => 'Вы успешно зарегистрировались!',
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role->name,
-                'access_token' => $token,
-            ]
-        ], 201);
+        return $this->generateTokens($user);
     }
+
+    // Вход в систему
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -62,39 +51,73 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        return $this->generateTokens($user);
+    }
 
-        // Удаляем старые токены перед созданием нового (если используем Sanctum)
+    // Обновление Access токена по Refresh токену
+    public function refresh(Request $request)
+    {
+        $refreshToken = $request->cookie('refresh_token');
+
+        if (!$refreshToken) {
+            return response()->json(['message' => 'Refresh token missing'], 401);
+        }
+
+        // Поиск пользователя по refresh токену
+        $user = User::where('refresh_token', hash('sha256', $refreshToken))->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'Invalid refresh token'], 401);
+        }
+
+        return $this->generateTokens($user);
+    }
+
+    // Выход из системы
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user) {
+            $user->api_token = null;
+            $user->refresh_token = null;
+            $user->save();
+        }
+
+        // Удаляем куку refresh токена
+        return response()->json(['message' => 'Вы успешно вышли из аккаунта!'])
+            ->cookie('refresh_token', '', -1);
+    }
+
+    // Вспомогательная функция генерации Access и Refresh токенов
+    private function generateTokens(User $user)
+    {
+        // Удаляем старые токены, если используем Sanctum
         $user->tokens()->delete();
 
-        // Создаем новый токен
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Новый Access токен
+        $accessToken = $user->createToken('auth_token')->plainTextToken;
+        $cleanAccessToken = explode('|', $accessToken)[1] ?? $accessToken;
 
-        // Убираем префикс `2|`
-        $cleanToken = explode('|', $token)[1] ?? $token;
+        // Новый Refresh токен
+        $refreshToken = Str::random(60);
 
-        // Сохраняем токен в базу данных
-        $user->api_token = $cleanToken;
+        // Сохраняем захэшированный refresh токен в БД
+        $user->api_token = $cleanAccessToken;
+        $user->refresh_token = hash('sha256', $refreshToken);
         $user->save();
 
         return response()->json([
-            'message' => 'Успешный вход в систему!',
-            'access_token' => $cleanToken,
+            'access_token' => $cleanAccessToken,
             'token_type' => 'Bearer',
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role->name ?? 'Пользователь',
             ]
-        ]);
-    }
-    public function logout(Request $request)
-    {
-        $user = $request->user();
-        if ($user) {
-            $user->api_token = null; // Очищаем токен
-            $user->save();
-        }
-
-        return response()->json(['message' => 'Вы успешно вышли из аккаунта!']);
+        ])->cookie(
+            'refresh_token', $refreshToken, 60 * 24 * 7, // 7 дней
+            '/', null, true, true, false, 'Strict'
+        );
     }
 }
