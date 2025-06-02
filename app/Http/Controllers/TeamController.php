@@ -18,7 +18,7 @@ class TeamController extends Controller
     public function index(): JsonResponse
     {
         $teams = Team::all();
-        
+
         return response()->json([
             'message' => 'Список команд успешно получен',
             'data' => $teams
@@ -31,13 +31,29 @@ class TeamController extends Controller
     public function show(int $id): JsonResponse
     {
         $team = Team::findOrFail($id);
-        
+
         return response()->json([
             'message' => 'Информация о команде успешно получена',
             'data' => $team
         ]);
     }
+  public function tournaments($teamId)
+  {
+    $team = Team::with(['tournaments' => function ($query) {
+      $query->select('tournaments.id', 'tournaments.name', 'tournaments.start_date');
+    }])->findOrFail($teamId);
 
+    // Можно дополнительно упростить:
+    $tournaments = $team->tournaments->map(function ($tournament) {
+      return [
+        'id' => $tournament->id,
+        'name' => $tournament->name,
+        'date' => $tournament->start_date,
+      ];
+    });
+
+    return response()->json(['data' => $tournaments]);
+  }
     /**
      * Получение списка участников команды
      */
@@ -97,7 +113,7 @@ class TeamController extends Controller
     {
         $team = Team::findOrFail($id);
         $validatedData = $request->validated();
-        
+
         // Проверяем, есть ли реальные изменения в данных
         $hasChanges = false;
         foreach ($validatedData as $field => $value) {

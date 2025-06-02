@@ -46,14 +46,17 @@ Route::middleware( 'auth:api')->post('/tournament/notify-registration', [Notific
 Route::middleware('auth:api')->get('/notifications', [NotificationController::class, 'getUserNotifications']);
 Route::middleware( 'auth:api')->post('/tournament/{id}/notify-registration', [NotificationController::class, 'notifyTournamentRegistrationOpen']);
 Route::middleware('auth:api')->get('/notifications/unread', [NotificationController::class, 'getUnreadNotifications']);
+Route::middleware( 'auth:api')->post('/teams/create', [TeamController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/team-invites/respond', [TeamInviteController::class, 'respondInvite']);
+
 });
 
 Route::post('/invite/respond', [TeamInviteController::class, 'respondInvite']);
 // Открытые маршруты (без аутентификации)
 Route::prefix('guest')->group(function () {
+  Route::get('/teams/{id}/tournaments', [TeamController::class, 'tournaments']);
     Route::get('/tournaments', [TournamentController::class, 'index']);
     Route::get('/tournaments/{id}', [TournamentController::class, 'show']);
     Route::get('/teams', [TeamController::class, 'index']);
@@ -131,7 +134,7 @@ Route::middleware(['auth:api', 'role:1'])->prefix('admin')->group(function () {
     // Просмотр команды по ID
     Route::get('/teams/{id}', [TeamController::class, 'show']);
     // Создание новой команды
-    Route::post('/teams/create', [TeamController::class, 'store']);
+
     // Редактирование команды
     Route::post('/teams/update/{id}', [TeamController::class, 'update']);
     // Удаление команды
